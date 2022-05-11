@@ -6,14 +6,19 @@ document.documentElement.appendChild(script);
 
 script.addEventListener('load', () => {
   // 通过 postMessage 给 popup 改变图标的样式
-  // chrome.storage.local.get(['ajaxInterceptor_switchOn', 'ajaxInterceptor_rules'], (result) => {
-  //   if (result.hasOwnProperty('ajaxInterceptor_switchOn')) {
-  //     postMessage({type: 'ajaxInterceptor', to: 'pageScript', key: 'ajaxInterceptor_switchOn', value: result.ajaxInterceptor_switchOn});
-  //   }
-  //   if (result.ajaxInterceptor_rules) {
-  //     postMessage({type: 'ajaxInterceptor', to: 'pageScript', key: 'ajaxInterceptor_rules', value: result.ajaxInterceptor_rules});
-  //   }
-  // });
+  chrome.storage.local.get(['request_interceptor_config'], (result) => {
+    console.log('%c result', "font-size: 20px; color: green;", result)
+    
+    if (result.hasOwnProperty('request_interceptor_config')) {
+      postMessage({
+        source: 'request-interceptor-iframe',
+        payload: result?.request_interceptor_config,
+      });
+    }
+    // if (result.ajaxInterceptor_rules) {
+    //   postMessage({type: 'ajaxInterceptor', to: 'pageScript', key: 'ajaxInterceptor_rules', value: result.ajaxInterceptor_rules});
+    // }
+  });
 });
 
 let iframe;
@@ -24,9 +29,11 @@ if (window.self === window.top) {
   document.onreadystatechange = () => {
     if (document.readyState === 'complete') {
       iframe = document.createElement('iframe'); 
-      iframe.className = "api-interceptor";
+      iframe.id = "request-interceptor";
+      iframe.className = "request-interceptor";
       iframe.style.setProperty('height', '100%', 'important');
-      iframe.style.setProperty('width', '450px', 'important');
+      // iframe.style.setProperty('width', '450px', 'important');
+      iframe.style.setProperty('width', '70%', 'important');
       iframe.style.setProperty('min-width', '1px', 'important');
       iframe.style.setProperty('position', 'fixed', 'important');
       iframe.style.setProperty('top', '0', 'important');
@@ -34,7 +41,8 @@ if (window.self === window.top) {
       iframe.style.setProperty('left', 'auto', 'important');
       iframe.style.setProperty('bottom', 'auto', 'important');
       iframe.style.setProperty('z-index', '9999999999999', 'important');
-      iframe.style.setProperty('transform', 'translateX(470px)', 'important');
+      // iframe.style.setProperty('transform', 'translateX(470px)', 'important');
+      iframe.style.setProperty('transform', 'translateX(100%)', 'important');
       iframe.style.setProperty('transition', 'all .4s', 'important');
       iframe.style.setProperty('box-shadow', '0 0 15px 2px rgba(0,0,0,0.12)', 'important');
       iframe.frameBorder = "none"; 
@@ -45,9 +53,9 @@ if (window.self === window.top) {
       chrome.runtime.onMessage.addListener((msg, sender) => {
         if (msg == 'toggle') {
           show = !show;
-          iframe.style.setProperty('transform', show ? 'translateX(0)' : 'translateX(470px)', 'important');
+          // iframe.style.setProperty('transform', show ? 'translateX(0)' : 'translateX(470px)', 'important');
+          iframe.style.setProperty('transform', show ? 'translateX(0)' : 'translateX(100%)', 'important');
         }
-
         return true;
       });
     }

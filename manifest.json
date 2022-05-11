@@ -31,9 +31,10 @@
   },
   "permissions": ["storage", "activeTab", "scripting"],
   "options_page": "options.html",
+  "host_permissions": ["http://*/*", "https://*/*"],
   "web_accessible_resources": [
     {
-      "resources": ["wrapper.js", "dist/index.html", "dist/assets/*"],
+      "resources": ["wrapper.js", "dist/index.html", "loader.js", "dist/*"],
       "matches": ["<all_urls>"]
     }
   ]

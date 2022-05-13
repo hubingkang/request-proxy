@@ -26,32 +26,6 @@ let request_interceptor_config = {};
 //   ]
 // }
 
-
-// let request_interceptor_config = {
-//   enabled: true,
-//   list: [
-//     {
-//       name: 'test1',
-//       match: 'Normal',
-//       rule: '/test',
-//       enabled: true,
-//       setting: {
-//         request: {
-//           body: '{"offset":0,"pageSize":10,"queryContext":"肯德基","poiLatitude":120.0145264,"poiLongitude":30.2831792}',
-//           query: '{"latitude":120.0145264,"longitude":30.2831792,"queryContext":"肯德基"}',
-//           headers: '{"testHeader": "test"}',
-//         },
-//         response: '{"code":0,"data":{},"msg":"ok","success":true}'
-//       },
-//     },
-//     { name: 'test2', match: 'Normal', rule: '/test', enabled: true, setting: { request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}` } },
-//     { name: 'test3', match: 'Normal', rule: '/test', enabled: false, setting: { request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}` } },
-//     { name: 'test4', match: 'Normal', rule: '/test', enabled: true, setting: { request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}` } },
-//     { name: 'test5', match: 'Normal', rule: '/test', enabled: false, setting: { request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}` } },
-//     { name: 'test6', match: 'Normal', rule: '/test', enabled: true, setting: { request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}` } },
-//   ]
-// }
-
 // const CONFIG = "REQUEST_INTERCEPTOR_CONFIG"
 const CONFIG = "__XHR__CONFIG__"
 
@@ -211,14 +185,17 @@ fill(xhrproto, 'send', function(originalSend) {
 });
 
 
-// 接收 iframe 的消息
+// 接收 iframe 的消息 - 修改 request_interceptor_config
 window.addEventListener('message', function (e) {
+  const { source, payload } = e.data || {}
   try {
-    if (e.data?.source === 'request-interceptor-iframe') {
-      request_interceptor_config = e.data?.payload;
-      console.log('%c wrapper ---- 主页面收到iframe消息', "font-size: 20px; color: red;", e.data?.payload)
+    if (source === 'request-interceptor-iframe') {
+      request_interceptor_config = payload;
+      console.log('%c 【wrapper】 ---- 来自 【iframe】 消息', "font-size: 20px; color: red;", payload)
+    } else if (source === 'request-interceptor-content') {
+      request_interceptor_config = payload;
+      console.log('%c 【wrapper】 ---- 来自 【content】 消息', "font-size: 20px; color: red;", payload)
     }
-    // console.log('主页面收到iframe消息', e)
   } catch (error) {
     console.log(error)
   }

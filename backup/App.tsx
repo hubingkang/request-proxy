@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { CloseOutlined, CheckOutlined, SettingTwoTone, DeleteTwoTone, PlusCircleTwoTone } from '@ant-design/icons';
 import './App.css'
 import { Drawer, Button, List, Input, Row, Col, Select, Switch, Tabs, Segmented } from 'antd';
 import 'antd/dist/antd.css';
-import useUpdateEffect from './use-update-effect'
+import useUpdateEffect from '../use-update-effect'
 // import MyEditor from './MyEditor'
 import CodeEditor from './CodeEditor'
 import SplitPane from 'react-split-pane'
 
 const { Option } = Select;
 const { TabPane } = Tabs;
+
 
 // const request_interceptor_config = {
 //   enabled: true,
@@ -50,17 +51,6 @@ function App() {
   // }, [])
 
   useEffect(() => {
-    const fn = (event: KeyboardEvent) => {
-      if (event.key === "Escape") postMessage2Background();
-    }
-
-    document.addEventListener("keydown",fn , false);
-    return () => {
-      document.removeEventListener("keydown",fn, false);
-    }
-  }, [])
-
-  useEffect(() => {
     if (chrome.storage) {
       // 通过 postMessage 给 popup 改变图标的样式
       chrome.storage.local.get(['request_interceptor_config'], (result) => {
@@ -88,13 +78,11 @@ function App() {
     } else {
       localStorage.setItem('request_interceptor_config', JSON.stringify(config))
     }
+    
+    // if (window.myBridge) {
+    //   window.myBridge(config)
+    // }
   }, [config])
-
-  const postMessage2Background = () => {
-    // 发送消息给 background
-    chrome.runtime && chrome.runtime.sendMessage(chrome.runtime.id, 'iframe-to-backgroud');
-  }
-
 
   // 全局开关
   const enabledChange = (value: boolean) => {
@@ -141,28 +129,22 @@ function App() {
 
   return (
     <div className="App">
+      <div className="mask"></div>
+      
       <div
         style={{ zIndex: 100 }}
       >
-        {/* @ts-ignore */}
         <SplitPane split="vertical" minSize={50} defaultSize={100}>
           <div
             style={{ 
+              backgroundColor: '#00000073',
               height: '100vh',
             }}
-            onClick={() => {
-              if (visible) {
-                setVisible(false)
-              } else {
-                // window.myBridge('1')
-                postMessage2Background()
-              }
-            }}
-        />
-         
+          >
+            123
+          </div>
           <div
             className="site-drawer-render-in-current-wrapper"
-            id="request-interceptor-dashboard"
             style={{
               padding: '12px',
               height: '100vh',
@@ -282,7 +264,7 @@ function App() {
 
             <Drawer
               title="Two-level Drawer"
-              width="100%"
+              width="90%"
               closable={false}
               onClose={() => {setVisible(false)}}
               visible={visible}

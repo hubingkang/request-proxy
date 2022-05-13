@@ -3,8 +3,6 @@ import react from '@vitejs/plugin-react'
 import replace from '@rollup/plugin-replace';
 import copy from 'rollup-plugin-copy';
 
-console.log('----', process.env.NODE_ENV);
-
 // https://vitejs.dev/config/
 export default defineConfig({
   ...(process.env.NODE_ENV === 'production' ? {base: './',} : {}),

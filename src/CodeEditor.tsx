@@ -124,7 +124,7 @@ const CodeEditor:FC<IProps> = ({ onChange, value}) => {
       <CodeMirror
         value={value}
         onBeforeChange={handleChange}
-        className="task-sql-codemirror"
+        className="json-codemirror"
         options={{
           mode: 'application/json',
           theme: 'dracula',

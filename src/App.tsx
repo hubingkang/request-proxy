@@ -78,7 +78,7 @@ function App() {
     if (chrome.storage) {
       // 通过 postMessage 给 popup 改变图标的样式
       chrome.storage.local.get(['request_proxy_config'], (result) => {
-        console.log('%c App.js 中获取 storage', "font-size: 20px; color: green;", result)
+        // console.log('%c App.js 中获取 storage', "font-size: 20px; color: green;", result)
         setConfig(result?.request_proxy_config || {});
       });
     } else {
@@ -98,12 +98,12 @@ function App() {
           payload: config,
         }, "*")
     
-        console.log('config更新了--调用了 postMessage 和 set strorage')
+        // console.log('config更新了--调用了 postMessage 和 set strorage')
         // 更新 chrome.storage.local
         chrome.storage.local.set({"request_proxy_config": config});
       } else {
         localStorage.setItem('request_proxy_config', JSON.stringify(config))
-        console.log('config更新了-- 设置了localstorage')
+        // console.log('config更新了-- 设置了localstorage')
       }
     }, 300)
   }, [config])

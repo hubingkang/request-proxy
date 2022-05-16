@@ -78,7 +78,6 @@ function requestQueryHandle (url, query) {
     ...JSON.parse(query),
   }).join('&')
 
-  console.log('%c requestQueryHandle --- query', "font-size: 20px; color: green;", url.replace(/\?.*/, params))
   return url.replace(/\?.*/, params);
 }
 
@@ -149,19 +148,13 @@ function requestHandler(url, body) {
       }
       // fetch 请求修改 query 参数
       newUrl = requestQueryHandle(url, request.query)
-      console.log('%c requestHandler--- 修改 newUrl111', "font-size: 20px; color: green;", newUrl)
     }
     // isMatch = true
     // 设置请求头
     // for (const [key, value] of Object.entries(JSON.parse(request?.headers))) {
     //   xhr.setRequestHeader(key, value)
     // }
-
-    console.log('%c requestHandler--- 匹配到指定 url', "font-size: 20px; color: green;", url, body)
   }
-
-  // console.log('%c requestHandler ---false', "font-size: 20px; color: green;", this, newBody)
-
   return [newUrl, newBody];
 }
 
@@ -239,7 +232,6 @@ fill(xhrproto, 'open', function(originalOpen) {
 // send 函数中只能获取 body 参数
 fill(xhrproto, 'send', function(originalSend) {
   return function(...args) {
-    // console.log('%c send---', "color: red;",  args, request_proxy_config)
     const xhr = this;
     
     // 未开启拦截
@@ -258,7 +250,6 @@ fill(window, 'fetch', function(originalFetch) {
   return function(...args) {
     let newArgs = args;
 
-    // console.log('%c Response---匹配到指定 fetch', "font-size: 20px; color: red;", args)
     // 开启拦截 修改请求参数
     if (request_proxy_config.enabled) {
       // 如果 args[1] 参数不存在 表示的是 一个 GET/HEAD 请求，body 为空
@@ -270,8 +261,6 @@ fill(window, 'fetch', function(originalFetch) {
         }]
       }
     };
-
-    // console.log('%c Response---匹配到指定 fetch', "font-size: 20px; color: red;", args[1].body, newArgs)
   
     return originalFetch.apply(window, newArgs).then(
       async (response) => {
@@ -301,10 +290,10 @@ window.addEventListener('message', function (e) {
   try {
     if (source === 'request-proxy-iframe') {
       request_proxy_config = payload;
-      console.log('%c 【wrapper】 ---- 来自 【iframe】 消息', "font-size: 20px; color: red;", payload)
+      // console.log('%c 【wrapper】 ---- 来自 【iframe】 消息', "font-size: 20px; color: red;", payload)
     } else if (source === 'request-proxy-content') {
       request_proxy_config = payload;
-      console.log('%c 【wrapper】 ---- 来自 【content】 消息', "font-size: 20px; color: red;", payload)
+      // console.log('%c 【wrapper】 ---- 来自 【content】 消息', "font-size: 20px; color: red;", payload)
     }
   } catch (error) {
     console.log(error)

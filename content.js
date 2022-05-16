@@ -12,11 +12,10 @@ document.documentElement.appendChild(script);
 script.addEventListener('load', () => {
   // 通过 postMessage 给 popup 改变图标的样式
   chrome.storage.local.get(['request_proxy_config'], (result) => {
-    console.log('%c 【content】初始获取【storage】', "font-size: 20px; color: green;", result)
-    
+    // console.log('%c 【content】初始获取【storage】', "font-size: 20px; color: green;", result)
     // 如果没有缓存数据，则设置默认值
     if (!result['request_proxy_config']) {
-      console.log('%c 【content】初始获取【storage】-- 没有数据，赋予默认值', "font-size: 20px; color: green;", result)
+      // console.log('%c 【content】初始获取【storage】-- 没有数据，赋予默认值', "font-size: 20px; color: green;", result)
       chrome.storage.local.set({ request_proxy_config })
     }
 
@@ -25,8 +24,6 @@ script.addEventListener('load', () => {
       source: 'request-proxy-content',
       payload: result?.request_proxy_config || request_proxy_config,
     });
-
-    // chrome.runtime.sendMessage(chrome.runtime.id, {type: 'ajaxInterceptor', to: 'background', iframeScriptLoaded: true});
   });
 });
 
@@ -54,7 +51,6 @@ if (window.self === window.top) {
         transform: "translateX(100%) !important",
         transition: "all .4s !important",
         border: "none",
-        // "box-shadow": "0 0 15px 2px rgba(0,0,0,0.12) !important",
       }
 
       let gatherStyle = "";
@@ -73,20 +69,8 @@ if (window.self === window.top) {
           iframe.style.setProperty('transform', show ? 'translateX(0)' : 'translateX(100%)', 'important');
         }
 
-        // chrome.storage.local.set({ request_proxy_config })
         sendResponse();
       });
     }
   }
 }
-
-// chrome.runtime.sendMessage('get-user-data', (response) => {
-//   // 3. Got an asynchronous response with the data from the background
-//   console.log('received user data', response);
-//   // initializeUI(response);
-// });
-
-// chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-//   console.log('message111111', message)
-//   sendResponse()
-// })

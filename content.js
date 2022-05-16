@@ -22,9 +22,11 @@ script.addEventListener('load', () => {
 
     // 发送消息给 wrapper.js 这里发送会比 iframe 执行早一些
     postMessage({
-      source: 'request-interceptor-content',
+      source: 'request-proxy-content',
       payload: result?.request_proxy_config || request_proxy_config,
     });
+
+    // chrome.runtime.sendMessage(chrome.runtime.id, {type: 'ajaxInterceptor', to: 'background', iframeScriptLoaded: true});
   });
 });
 
@@ -36,8 +38,8 @@ if (window.self === window.top) {
   document.onreadystatechange = () => {
     if (document.readyState === 'complete') {
       iframe = document.createElement('iframe'); 
-      iframe.id = "request-interceptor";
-      iframe.className = "request-interceptor";
+      iframe.id = "request-proxy";
+      iframe.className = "request-proxy";
 
       const style = {
         height: '100vh !important',

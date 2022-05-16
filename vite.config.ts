@@ -11,12 +11,11 @@ export default defineConfig({
     ...(process.env.NODE_ENV === 'production'
       ? [
           replace({
-            'https://cdn.jsdelivr.net/npm/monaco-editor@0.33.0/min/vs': './monaco-editor/main',
+            'https://cdn.jsdelivr.net/npm/monaco-editor@0.33.0/min/vs': './vs',
           }),
           copy({
             targets: [
-              { src: 'monaco-editor/*', dest: 'dist/monaco-editor' },
-              { src: 'test.js', dest: 'dist/' },
+              { src: 'public/vs/*', dest: 'dist/vs' },
             ],
             hook: 'writeBundle'
           })

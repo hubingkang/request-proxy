@@ -4,7 +4,9 @@ let request_proxy_config = {
 };
 
 const CONFIG = "__XHR__CONFIG__"
-const getUrlParams = (url) => {
+
+// 获取 url 参数
+function getUrlParams(url) {
   const u = new URL(url);
   const s = new URLSearchParams(u.search);
   const obj = {};
@@ -21,7 +23,7 @@ const getUrlParams = (url) => {
   return obj;
 }
 
-const isRegExp = () => {
+function isRegExp() {
   let isRegExp;
   try {
     isRegExp = eval(reg) instanceof RegExp
@@ -31,11 +33,11 @@ const isRegExp = () => {
   return isRegExp
 }
 
-const isJSONString = (str) => {
+function isJSONString(str) {
   if (typeof str == 'string') {
     try {
       var obj = JSON.parse(str);
-      if (typeof obj == 'object' && obj) {
+      if (Object.prototype.toString.call(obj) === '[object Object]'&& obj) {
         return true;
       } else {
         return false;
@@ -45,67 +47,6 @@ const isJSONString = (str) => {
     }
   }
   return false;
-}
-
-// 请求处理
-function requestHandler(url, body) {
-  let newUrl = url;
-  let newBody = body;
-
-  const isXHR = this instanceof XMLHttpRequest; // true is ajax，false is fetch
-
-  // 过滤 fetch 的 GET/HEAD 请求， Request with GET/HEAD method cannot have body
-  if (!isXHR && !body) return [newUrl, newBody];
-
-  for (const item of request_proxy_config.list) {
-    const { match, rule, enabled, cover, request } = item;
-    if (!enabled) continue;
-
-    // 匹配结果
-    let matchResult = false;
-
-    if (match === 'RegExp') {
-      matchResult = url.match(new RegExp(rule, 'i'));
-    } else {
-      matchResult = url.includes(rule)
-    }
-
-    if (!matchResult) continue;
-
-    // 如果 body 不符合 JSON string 格式，跳过
-    if (!isJSONString(request?.body)) break;
-
-    // 当前请求来自 ajax
-    if (isXHR) {
-      // 代理 xhr 属性 - 目的是代理劫持返回数据
-      proxyXHRAttribute(this, 'responseText')
-      proxyXHRAttribute(this, 'response')
-    } else {
-      // fetch 请求修改 query 参数
-      newUrl = requestQueryHandle(url, request.query)
-      console.log('%c requestHandler--- 修改 newUrl111', "font-size: 20px; color: green;", newUrl)
-    }
-  
-    // 修改 body 参数
-    newBody = {
-      ...(cover ? {} : body), // 覆盖默认值不传入原本的 body
-      ...JSON.parse(request?.body)
-    }
-
-    // console.log(this)
-
-    // isMatch = true
-    // 设置请求头
-    // for (const [key, value] of Object.entries(JSON.parse(request?.headers))) {
-    //   xhr.setRequestHeader(key, value)
-    // }
-
-    console.log('%c requestHandler---匹配到指定 url', "font-size: 20px; color: green;", this, newBody)
-  }
-
-  // console.log('%c requestHandler ---false', "font-size: 20px; color: green;", this, newBody)
-
-  return [newUrl, newBody];
 }
 
 function stringify(obj) {
@@ -141,7 +82,7 @@ function requestQueryHandle (url, query) {
   return url.replace(/\?.*/, params);
 }
 
-const proxyXHRAttribute = (target, attr) => {
+function proxyXHRAttribute (target, attr) {
   Object.defineProperty(target, attr, {
     get: () => target[`_${attr}`],
     set: (val) => target[`_${attr}`] = val,
@@ -161,6 +102,98 @@ function fill(source, name, replacementFactory) {
   }
 }
 
+// 请求处理
+function requestHandler(url, body) {
+  let newUrl = url;
+  let newBody = body;
+
+  const isXHR = this instanceof XMLHttpRequest; // true is ajax，false is fetch
+
+  // 过滤 fetch 的 GET/HEAD 请求， Request with GET/HEAD method cannot have body
+  if (!isXHR && !body) return [newUrl, newBody];
+
+  for (const item of request_proxy_config.list) {
+    const { match, rule, enabled, cover, request } = item;
+    if (!enabled) continue;
+
+    // 匹配结果
+    let matchResult = false;
+
+    if (match === 'RegExp') {
+      matchResult = url.match(new RegExp(rule, 'i'));
+    } else {
+      matchResult = url.includes(rule)
+    }
+
+    if (!matchResult) continue;
+
+    // 如果 body 不符合 JSON string 格式，跳过
+    if (!isJSONString(request?.body)) break;
+
+    // 当前请求来自 ajax
+    if (isXHR) {
+      // 代理 xhr 属性 - 目的是代理劫持返回数据
+      proxyXHRAttribute(this, 'responseText')
+      proxyXHRAttribute(this, 'response')
+
+      // 修改 body 参数
+      newBody = JSON.stringify({
+        ...(cover ? {} : JSON.parse(body)), // 覆盖默认值不传入原本的 body, XHR body 是个字符串
+        ...JSON.parse(request?.body)
+      })
+    } else {
+      // 修改 body 参数
+      newBody = {
+        ...(cover ? {} : body), // 覆盖默认值不传入原本的 body, Fetch body 是个对象
+        ...JSON.parse(request?.body)
+      }
+      // fetch 请求修改 query 参数
+      newUrl = requestQueryHandle(url, request.query)
+      console.log('%c requestHandler--- 修改 newUrl111', "font-size: 20px; color: green;", newUrl)
+    }
+    // isMatch = true
+    // 设置请求头
+    // for (const [key, value] of Object.entries(JSON.parse(request?.headers))) {
+    //   xhr.setRequestHeader(key, value)
+    // }
+
+    console.log('%c requestHandler--- 匹配到指定 url', "font-size: 20px; color: green;", url, body)
+  }
+
+  // console.log('%c requestHandler ---false', "font-size: 20px; color: green;", this, newBody)
+
+  return [newUrl, newBody];
+}
+
+// 响应处理
+function responseHandler(url) {
+  let result;
+
+  for (const item of request_proxy_config.list) {
+    const { match, rule, enabled, response: responseConfig } = item;
+    if (!enabled) continue;
+
+    // 匹配结果
+    let matchResult = false;
+
+    if (match === 'RegExp') {
+      matchResult = url.match(new RegExp(rule, 'i'));
+    } else {
+      matchResult = url.includes(rule)
+    }
+
+    if (!matchResult) continue;
+
+    // 保证 responseConfig 存在并且是一个 JSON 字符串
+    if (responseConfig && isJSONString(responseConfig)) {
+      result = JSON.parse(responseConfig);
+    }
+    break;
+  }
+
+  return result;
+}
+
 // 记录请求的 xhr 和对应的参数，目前不需要，后续 Breadcrumb 可能需要
 const xhrproto = XMLHttpRequest.prototype;
 
@@ -172,33 +205,19 @@ fill(xhrproto, 'open', function(originalOpen) {
     // 未开启拦截
     if (!request_proxy_config.enabled) return originalOpen.apply(xhr, args);
 
+    const [method, url] = args;
+    
     xhr[CONFIG] = {
-      method: args[0],
-      url: args[1],
+      method,
+      url,
     }
 
     const onreadystatechangeHandler = function() {
       if (xhr.readyState === 4) {
-        for (const item of request_proxy_config.list) {
-          const { match, rule, enabled, response } = item;
-          if (!enabled) continue;
-    
-          // 匹配结果
-          let matchResult = false;
-    
-          if (match === 'RegExp') {
-            matchResult = xhr[CONFIG].url.match(new RegExp(rule, 'i'));
-          } else {
-            matchResult = xhr[CONFIG].url.includes(rule)
-          }
-    
-          if (!matchResult) continue;
-    
-          // 下面的会被代理到 _[attr] 上
-          xhr.responseText = response;
-          xhr.response = response;
-          // console.log('%c Response---匹配到指定 url', "font-size: 20px; color: red;", response)
-        }
+        const responseJson = responseHandler(url)
+         // 下面的会被代理到 _[attr] 上
+         xhr.responseText = responseJson;
+         xhr.response = responseJson;
       }
     };
 
@@ -230,7 +249,7 @@ fill(xhrproto, 'send', function(originalSend) {
 
     xhr[CONFIG].body = newBody;
 
-    return originalSend.apply(xhr, [JSON.stringify(newBody), ...rest]);
+    return originalSend.apply(xhr, [newBody, ...rest]);
   };
 });
 
@@ -242,43 +261,32 @@ fill(window, 'fetch', function(originalFetch) {
     // console.log('%c Response---匹配到指定 fetch', "font-size: 20px; color: red;", args)
     // 开启拦截 修改请求参数
     if (request_proxy_config.enabled) {
-      const [url, newBody] = requestHandler.call(this, args[0], args[1].body && JSON.parse(args[1].body));
-      newArgs = [url, {
-        ...args[1],
-        body: JSON.stringify(newBody)
-      }]
+      // 如果 args[1] 参数不存在 表示的是 一个 GET/HEAD 请求，body 为空
+      if (args[1]) {
+        const [url, newBody] = requestHandler.call(this, args[0], args[1].body && JSON.parse(args[1].body));
+        newArgs = [url, {
+          ...args[1],
+          body: JSON.stringify(newBody)
+        }]
+      }
     };
 
     // console.log('%c Response---匹配到指定 fetch', "font-size: 20px; color: red;", args[1].body, newArgs)
-
   
     return originalFetch.apply(window, newArgs).then(
       async (response) => {
         if (!request_proxy_config.enabled) return response;
-        // https://stackoverflow.com/questions/50728411/how-to-inspect-fetch-call-and-return-same-call
-        cloneResponse = response.clone();
-        let json = response.json();
+        // 如果匹配并成功修改返回值，则 responseJson 为修改后的值、否则 responseJson 为 undefined
+        const responseJson = responseHandler(response.url)
 
-        for (const item of request_proxy_config.list) {
-          const { match, rule, enabled, response: responseConfig } = item;
-          if (!enabled) continue;
-    
-          // 匹配结果
-          let matchResult = false;
-    
-          if (match === 'RegExp') {
-            matchResult = cloneResponse.url.match(new RegExp(rule, 'i'));
-          } else {
-            matchResult = cloneResponse.url.includes(rule)
-          }
-    
-          if (!matchResult) continue;
-          json = JSON.parse(responseConfig);
-          break;
+        // 如果 json 未被赋予新的值，则返回原有的 response
+        if (!responseJson) {
+          return response
+        } else {
+          let cloneResponse = response.clone();
+          cloneResponse.json = () => Promise.resolve(responseJson);
+          return cloneResponse;
         }
-  
-        cloneResponse.json = () => Promise.resolve(json);
-        return cloneResponse;
       },
       (error) => {
         throw error;
@@ -291,10 +299,10 @@ fill(window, 'fetch', function(originalFetch) {
 window.addEventListener('message', function (e) {
   const { source, payload } = e.data || {}
   try {
-    if (source === 'request-interceptor-iframe') {
+    if (source === 'request-proxy-iframe') {
       request_proxy_config = payload;
       console.log('%c 【wrapper】 ---- 来自 【iframe】 消息', "font-size: 20px; color: red;", payload)
-    } else if (source === 'request-interceptor-content') {
+    } else if (source === 'request-proxy-content') {
       request_proxy_config = payload;
       console.log('%c 【wrapper】 ---- 来自 【content】 消息', "font-size: 20px; color: red;", payload)
     }
@@ -302,13 +310,3 @@ window.addEventListener('message', function (e) {
     console.log(error)
   }
 })
-
-
-// window.onload = () => {
-//   const iframe = document.getElementById('request-interceptor')
-//   console.log('iframe', iframe)
-
-//   iframe.onload = () => {
-//     iframe.contentWindow.postMessage({name: '对弈'}, '*')
-//   }
-// }

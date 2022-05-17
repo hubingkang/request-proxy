@@ -113,8 +113,8 @@ function requestHandler(url, body, headers) {
   // 过滤 fetch 的 GET/HEAD 请求， Request with GET/HEAD method cannot have body
   if (!isXHR && !body) return [newUrl, newBody, newHeaders];
 
-  for (const item of request_proxy_config.list) {
-    const { rule, enabled, request } = item;
+  for (const index in request_proxy_config.list) {
+    const { rule, enabled, request } = request_proxy_config.list[index];
 
     if (!enabled) continue;
 
@@ -129,6 +129,23 @@ function requestHandler(url, body, headers) {
 
     if (!matchResult) continue;
 
+    const state = [];
+    // 更新命中状态
+    if (request.body?.value !== "" && !isJSONString(request.body?.value)) {
+      // 设置对应值的状态
+      state.push("REQUEST_BODY_JSON_ERROR")
+    }
+    if (request.query?.value !== "" && !isJSONString(request.query?.value)) {
+      // 设置对应值的状态
+      state.push("REQUEST_QUERY_JSON_ERROR")
+    }
+    if (request.headers?.value !== "" && !isJSONString(request.headers?.value)) {
+      // 设置对应值的状态
+      state.push("REQUEST_HEADERS_JSON_ERROR")
+    }
+    request_proxy_config.list[index].state.push(...state);
+    sendMessage2Content()
+    
     // fetch 请求修改 query 参数
     if (!isXHR) {
       newUrl = requestQueryHandle(url, request.query)
@@ -144,7 +161,7 @@ function requestHandler(url, body, headers) {
       } else {
         newHeaders = {
           ...(request?.headers?.overwritten ? {} : headers),
-          ...(isJSONString(request?.headers?.value) ? JSON.parse(request?.headers?.value) : {}),
+          ...JSON.parse(request?.headers?.value),
         }
       }
     }
@@ -176,8 +193,8 @@ function requestHandler(url, body, headers) {
 function responseHandler(url) {
   let result;
 
-  for (const item of request_proxy_config.list) {
-    const { rule, enabled, response: responseConfig } = item;
+  for (const index in request_proxy_config.list) {
+    const { rule, enabled, response } = request_proxy_config.list[index];
     if (!enabled) continue;
 
     // 匹配结果
@@ -191,9 +208,18 @@ function responseHandler(url) {
 
     if (!matchResult) continue;
 
-    // 保证 responseConfig 存在并且是一个 JSON 字符串
-    if (responseConfig && isJSONString(responseConfig)) {
-      result = JSON.parse(responseConfig);
+    // 更新命中状态
+    const state = ["RULE_IS_MATCHED"]
+    if (response !== "" && !isJSONString(response)) {
+      // 设置对应值的状态
+      state.push("RESPONSE_JSON_ERROR")
+    }
+    request_proxy_config.list[index].state = state
+    sendMessage2Content()
+
+    // 保证 response 存在并且是一个 JSON 字符串
+    if (isJSONString(response)) {
+      result = JSON.parse(response);
     }
     break;
   }
@@ -308,10 +334,10 @@ fill(window, 'fetch', function(originalFetch) {
 window.addEventListener('message', function (e) {
   const { source, payload } = e.data || {}
   try {
-    if (source === 'request-proxy-iframe') {
+    if (source === 'iframe-to-wrapper') {
       request_proxy_config = payload;
       // console.log('%c 【wrapper】 ---- 来自 【iframe】 消息', "font-size: 20px; color: red;", payload)
-    } else if (source === 'request-proxy-content') {
+    } else if (source === 'content-to-wrapper') {
       request_proxy_config = payload;
       // console.log('%c 【wrapper】 ---- 来自 【content】 消息', "font-size: 20px; color: red;", payload)
     }
@@ -319,3 +345,10 @@ window.addEventListener('message', function (e) {
     console.log(error)
   }
 })
+
+function sendMessage2Content() {
+  postMessage({
+    source: 'wrapper-to-content',
+    payload: request_proxy_config,
+  }, "*");
+}

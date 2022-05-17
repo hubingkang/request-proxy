@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { CloseOutlined, CheckOutlined, PlusCircleTwoTone, SyncOutlined } from '@ant-design/icons';
+import { CloseOutlined, CheckOutlined, PlusCircleTwoTone, SyncOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import './App.css'
 import { Drawer, Button, List, Input, Row, Col, Radio, Switch, Tabs, Segmented, Tag, Space, Divider } from 'antd';
 import 'antd/dist/antd.css';
@@ -19,7 +19,7 @@ const request_proxy_config = {
       // rule: '/shopList/gets',
       rule: '/budd/shop/draft/examine/list',
       enabled: true,
-      state: 1,
+      state: [],
       request: {
         body: {
           overwritten: false,
@@ -71,6 +71,19 @@ function App() {
   // }, [])
 
   useEffect(() => {
+    if (chrome.runtime) {
+      console.log('Appjs - chrome.runtime', chrome.runtime)
+      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        const { source, payload } = message;
+        if (source === 'content-to-iframe') {
+          setConfig(payload)
+        }
+        sendResponse({test: 'test'});
+      });
+    }
+  }, [])
+
+  useEffect(() => {
     const fn = (event: KeyboardEvent) => {
       if (event.key === "Escape") postMessage2Background();
     }
@@ -101,7 +114,7 @@ function App() {
       // 发送数据给注入到主页面的 js
       if (chrome.storage) {
         window.parent.postMessage({
-          source: 'request-proxy-iframe',
+          source: 'iframe-to-wrapper',
           payload: config,
         }, "*")
     
@@ -117,7 +130,9 @@ function App() {
 
   const postMessage2Background = () => {
     // 发送消息给 background
-    chrome.runtime && chrome.runtime.sendMessage(chrome.runtime.id, 'iframe-to-backgroud');
+    chrome.runtime && chrome.runtime.sendMessage(chrome.runtime.id, {
+      source: 'iframe-to-backgroud'
+    });
   }
 
 
@@ -148,10 +163,9 @@ function App() {
     const newConfig = {...config};
     newConfig.list.push({
       name: '',
-      match: 'Normal',
       rule: '',
       enabled: true,
-      state: 2,
+      state: [],
       request: {
         body: {
           overwritten: false,
@@ -177,15 +191,25 @@ function App() {
     setVisible(false)
   }
 
-  const getStateNode = (value: number) => {
-    const state = {
-      1: <Tag color="success">已命中</Tag>,
-      2: <Tag icon={<SyncOutlined spin />} color="processing">待命中</Tag>,
-      3: <Tag color="default">待启用</Tag>
+  const getStateNode = (states: Array<any>) => {
+    if (!states.length) {
+      return <Tag color="default">Disabled</Tag>
     }
 
-    {/* @ts-ignore */}
-    return state[value]
+    if (states.length === 1) {
+      return <Tag icon={<SyncOutlined spin />} color="success">Is matched</Tag>
+    }
+
+    return states.map(item => {
+      switch (item) {
+        case 'REQUEST_BODY_JSON_ERROR':
+          return <Tag icon={<CloseCircleOutlined />} color="error">Check the request body JSON</Tag>;
+        case 'REQUEST_QUERY_JSON_ERROR':
+          return <Tag icon={<CloseCircleOutlined />} color="error">Check the request query JSON</Tag>
+        case 'REQUEST_HEADERS_JSON_ERROR':
+          return <Tag icon={<CloseCircleOutlined />} color="error">Check the request headers JSON</Tag>
+      }
+    })
   }
 
   return (

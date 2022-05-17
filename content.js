@@ -3,6 +3,19 @@ let request_proxy_config = {
   list: []
 };
 
+// 接收 wrapper 的消息
+window.addEventListener('message', function (e) {
+  const { source, payload } = e.data || {}
+  if (source === 'wrapper-to-content') {
+    chrome.storage.local.set({ request_proxy_config: payload })
+
+    chrome.runtime.sendMessage({
+      source: "content-to-iframe",
+      payload,
+    });
+  }
+})
+
 // 在页面上插入代码
 const script = document.createElement('script');
 script.setAttribute('type', 'text/javascript');
@@ -21,7 +34,7 @@ script.addEventListener('load', () => {
 
     // 发送消息给 wrapper.js 这里发送会比 iframe 执行早一些
     postMessage({
-      source: 'request-proxy-content',
+      source: 'content-to-wrapper',
       payload: result?.request_proxy_config || request_proxy_config,
     });
   });

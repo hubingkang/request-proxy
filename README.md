@@ -10,10 +10,10 @@ Chrome request proxy extension
 
 ## ✨Features
 
-- [X] Ajax/Fetch Request query
-- [X] Ajax/Fetch Request body
-- [ ] Ajax/Fetch Request header
-- [X] Ajax/Fetch Response
+- [X] Supports modifying Ajax/Fetch Request query
+- [X] Supports modifying Ajax/Fetch Request body
+- [X] Supports modifying Ajax/Fetch Request header
+- [X] Supports modifying Ajax/Fetch Response
 
 
 ## 🔨 Usage

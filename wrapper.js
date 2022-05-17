@@ -70,12 +70,13 @@ function stringify(obj) {
 
 // 处理 url query
 function requestQueryHandle (url, query) {
-  if (!isJSONString(query)) return url;
-  const res = getUrlParams(url)
+  const { overwritten, value } = query || {};
+
+  if (!isJSONString(value)) return url;
 
   const params = "?" + stringify({
-    ...res,
-    ...JSON.parse(query),
+    ...(overwritten ? {} : getUrlParams(url)),
+    ...JSON.parse(value),
   }).join('&')
 
   return url.replace(/\?.*/, params);
@@ -102,23 +103,25 @@ function fill(source, name, replacementFactory) {
 }
 
 // 请求处理
-function requestHandler(url, body) {
+function requestHandler(url, body, headers) {
   let newUrl = url;
   let newBody = body;
+  let newHeaders = headers;
 
   const isXHR = this instanceof XMLHttpRequest; // true is ajax，false is fetch
 
   // 过滤 fetch 的 GET/HEAD 请求， Request with GET/HEAD method cannot have body
-  if (!isXHR && !body) return [newUrl, newBody];
+  if (!isXHR && !body) return [newUrl, newBody, newHeaders];
 
   for (const item of request_proxy_config.list) {
-    const { match, rule, enabled, cover, request } = item;
+    const { rule, enabled, request } = item;
+
     if (!enabled) continue;
 
     // 匹配结果
     let matchResult = false;
 
-    if (match === 'RegExp') {
+    if (isRegExp(rule)) {
       matchResult = url.match(new RegExp(rule, 'i'));
     } else {
       matchResult = url.includes(rule)
@@ -126,36 +129,47 @@ function requestHandler(url, body) {
 
     if (!matchResult) continue;
 
-    // 如果 body 不符合 JSON string 格式，跳过
-    if (!isJSONString(request?.body)) break;
+    // fetch 请求修改 query 参数
+    if (!isXHR) {
+      newUrl = requestQueryHandle(url, request.query)
+    }
+
+    // 设置请求头
+    if (isJSONString(request?.headers?.value)) {
+      if (isXHR) {
+        // 设置请求头
+        for (const [key, value] of Object.entries(JSON.parse(request?.headers?.value))) {
+          this.setRequestHeader(key, value)
+        }
+      } else {
+        newHeaders = {
+          ...(request?.headers?.overwritten ? {} : headers),
+          ...(isJSONString(request?.headers?.value) ? JSON.parse(request?.headers?.value) : {}),
+        }
+      }
+    }
+
+    // // 如果 rule 符合 而 body 不符合 JSON string 格式，则不再向下匹配, 直接跳过, 避免出现两条同样的规则各匹配一部分的情况
+    // if (!isJSONString(request?.body?.value)) break;
+    if (!isJSONString(request?.body?.value)) continue;
 
     // 当前请求来自 ajax
     if (isXHR) {
-      // 代理 xhr 属性 - 目的是代理劫持返回数据
-      proxyXHRAttribute(this, 'responseText')
-      proxyXHRAttribute(this, 'response')
-
       // 修改 body 参数
       newBody = JSON.stringify({
-        ...(cover ? {} : JSON.parse(body)), // 覆盖默认值不传入原本的 body, XHR body 是个字符串
-        ...JSON.parse(request?.body)
+        ...(request?.body?.overwritten ? {} : body), // 覆盖默认值不传入原本的 body, XHR body 是个字符串
+        ...JSON.parse(request?.body.value)
       })
     } else {
       // 修改 body 参数
       newBody = {
-        ...(cover ? {} : body), // 覆盖默认值不传入原本的 body, Fetch body 是个对象
-        ...JSON.parse(request?.body)
+        ...(request?.body?.overwritten ? {} : body), // 覆盖默认值不传入原本的 body, Fetch body 是个对象
+        ...JSON.parse(request?.body.value)
       }
-      // fetch 请求修改 query 参数
-      newUrl = requestQueryHandle(url, request.query)
     }
-    // isMatch = true
-    // 设置请求头
-    // for (const [key, value] of Object.entries(JSON.parse(request?.headers))) {
-    //   xhr.setRequestHeader(key, value)
-    // }
   }
-  return [newUrl, newBody];
+
+  return [newUrl, newBody, newHeaders];
 }
 
 // 响应处理
@@ -163,13 +177,13 @@ function responseHandler(url) {
   let result;
 
   for (const item of request_proxy_config.list) {
-    const { match, rule, enabled, response: responseConfig } = item;
+    const { rule, enabled, response: responseConfig } = item;
     if (!enabled) continue;
 
     // 匹配结果
     let matchResult = false;
 
-    if (match === 'RegExp') {
+    if (isRegExp(rule)) {
       matchResult = url.match(new RegExp(rule, 'i'));
     } else {
       matchResult = url.includes(rule)
@@ -198,19 +212,24 @@ fill(xhrproto, 'open', function(originalOpen) {
     // 未开启拦截
     if (!request_proxy_config.enabled) return originalOpen.apply(xhr, args);
 
-    const [method, url] = args;
-    
-    xhr[CONFIG] = {
-      method,
-      url,
-    }
+    const [method, url, ...restArgs] = args;
+    const newUrl = requestQueryHandle(url);
+
+    xhr[CONFIG] = { method, url: newUrl };
 
     const onreadystatechangeHandler = function() {
       if (xhr.readyState === 4) {
-        const responseJson = responseHandler(url)
-         // 下面的会被代理到 _[attr] 上
-         xhr.responseText = responseJson;
-         xhr.response = responseJson;
+        const responseJson = responseHandler(newUrl);
+        // 如果待修改的 responseJson 有值，则代理响应结果
+        if (responseJson) {
+          // 代理 xhr 属性 - 目的是代理劫持返回数据
+          proxyXHRAttribute(this, 'responseText');
+          proxyXHRAttribute(this, 'response');
+
+          // 下面的会被代理到 _[attr] 上
+          xhr.responseText = responseJson;
+          xhr.response = responseJson;
+        }
       }
     };
 
@@ -225,7 +244,7 @@ fill(xhrproto, 'open', function(originalOpen) {
       xhr.addEventListener('readystatechange', onreadystatechangeHandler);
     }
     
-    return originalOpen.apply(xhr, args);
+    return originalOpen.apply(xhr, [method, newUrl, ...restArgs]);
   };
 });
 
@@ -254,10 +273,11 @@ fill(window, 'fetch', function(originalFetch) {
     if (request_proxy_config.enabled) {
       // 如果 args[1] 参数不存在 表示的是 一个 GET/HEAD 请求，body 为空
       if (args[1]) {
-        const [url, newBody] = requestHandler.call(this, args[0], args[1].body && JSON.parse(args[1].body));
+        const [url, newBody, newHeaders] = requestHandler.call(this, args[0], args[1].body && JSON.parse(args[1].body), args[1].headers);
         newArgs = [url, {
           ...args[1],
-          body: JSON.stringify(newBody)
+          body: JSON.stringify(newBody),
+          headers: newHeaders
         }]
       }
     };

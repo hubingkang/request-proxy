@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from 'react'
-import { CloseOutlined, CheckOutlined, SettingTwoTone, DeleteTwoTone, PlusCircleTwoTone } from '@ant-design/icons';
+import { useState, useEffect } from 'react'
+import { CloseOutlined, CheckOutlined, PlusCircleTwoTone, SyncOutlined } from '@ant-design/icons';
 import './App.css'
-import { Drawer, Button, List, Input, Row, Col, Select, Switch, Tabs, Segmented } from 'antd';
+import { Drawer, Button, List, Input, Row, Col, Radio, Switch, Tabs, Segmented, Tag, Space, Divider } from 'antd';
 import 'antd/dist/antd.css';
 import useUpdateEffect from './use-update-effect'
-import CodeEditor from './CodeEditor'
 import SplitPane from 'react-split-pane'
 import waitImg from './assest/wait.png'
 import JsonEditor from './json-editor'
 
-const { Option } = Select;
 const { TabPane } = Tabs;
 
 const request_proxy_config = {
@@ -21,20 +19,29 @@ const request_proxy_config = {
       // rule: '/shopList/gets',
       rule: '/budd/shop/draft/examine/list',
       enabled: true,
-      cover: false,
+      state: 1,
       request: {
-        body: '{"offset":10}',
-        query: '{"latitude":120.0145264,"longitude":30.2831792,"queryContext":"肯德基"}',
-        headers: '{"test": "test"}',
+        body: {
+          overwritten: false,
+          value: '{"offset":10}'
+        },
+        query: {
+          overwritten: false,
+          value: '{"latitude":120.0145264,"longitude":30.2831792,"queryContext":"肯德基"}'
+        },
+        headers: {
+          overwritten: false,
+          value: '{"offset":10}'
+        },
       },
       // response: '{"code":0,"data":{},"msg":"ok","success":true}'
       response: '{"code":0,"data":{"total":12,"list":[{"id":1055,"name":"1全家便利店111","address":"浙江省杭州市余杭区-海创园14幢","contactName":"沧尽","contactMobile":"13313131313","typeId":261,"typeName":"超市/便利店","gmtCreate":1652169465730,"examineStatus":3,"examineRejectReason":"代理商、运营型服务商的门店不能创建商机,shopId=1112119164","examineRemark":"代理商、运营型服务商的门店不能创建商机,shopId=1112119164","shopCreateSourceEnum":"CREATE_OPPO","defaultTip":"审核中,请等待审核通过后再开始签约及安装","mobile":"13313131313","creator":617,"examineTime":1652169490440,"parentTypeName":"购物","importSubject":1,"subjectBizId":0},{"id":1054,"name":"全家便利店九","address":"浙江省杭州市余杭区-未来科技城海创园5号楼一楼","contactName":"沧尽","contactMobile":"13333333333","typeId":98,"typeName":"美容/美发","gmtCreate":1652082205742,"examineStatus":3,"examineRejectReason":"代理商、运营型服务商的门店不能创建商机,shopId=1112119115","examineRemark":"代理商、运营型服务商的门店不能创建商机,shopId=1112119115","shopCreateSourceEnum":"CREATE_OPPO","defaultTip":"审核中,请等待审核通过后再开始签约及安装","mobile":"13333333333","creator":617,"examineTime":1652082615856,"parentTypeName":"休闲娱乐","importSubject":1,"subjectBizId":0}]},"msg":"ok","success":true}'
     },
-    { name: 'test2', match: 'Normal', rule: '/test', enabled: true, cover: false, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
-    { name: 'test3', match: 'Normal', rule: '/test', enabled: false, cover: false, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
-    { name: 'test4', match: 'RegExp', rule: '/test', enabled: true, cover: false, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
-    { name: 'test5', match: 'Normal', rule: '/test', enabled: false, cover: false, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
-    { name: 'test6', match: 'Normal', rule: '/test', enabled: true, cover: false, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
+    { name: 'test2', match: 'Normal', rule: '/test', enabled: true, state: 2, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
+    { name: 'test3', match: 'Normal', rule: '/test', enabled: false, state: 3, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
+    { name: 'test4', match: 'RegExp', rule: '/test', enabled: true, state: 1, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
+    { name: 'test5', match: 'Normal', rule: '/test', enabled: false, state: 2, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
+    { name: 'test6', match: 'Normal', rule: '/test', enabled: true, state: 3, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
   ]
 }
 
@@ -57,7 +64,7 @@ function App() {
   const [config, setConfig] = useState<Record<string, any>>({});
   const [editorValue, setEditorValue] = useState<string>('');
   const [handledIndex, setHandledIndex] = useState<number>(0); // 当前操作的索引 index
-  const [requestSettingType, setRequestSettingType] = useState<string>("1"); // 当前操作的索引 index
+  const [requestSettingType, setRequestSettingType] = useState<string>("body"); // 当前操作的索引 index
 
   // useEffect(() => {
   //   localStorage.setItem('request_proxy_config', JSON.stringify(request_proxy_config))
@@ -144,13 +151,21 @@ function App() {
       match: 'Normal',
       rule: '',
       enabled: true,
-      cover: false,
+      state: 2,
       request: {
-        body: '',
-        query: '',
-        headers: '',
+        body: {
+          overwritten: false,
+          value: ''
+        },
+        query: {
+          overwritten: false,
+          value: ''
+        },
+        headers: {
+          overwritten: false,
+          value: ''
+        },
       },
-      // response: '{"code":0,"data":{},"msg":"ok","success":true}'
       response: ''
     });
     setConfig(newConfig);
@@ -158,8 +173,19 @@ function App() {
 
   const cancelDrawer = () => {
     setSettingType('RESPONSE')
-    setRequestSettingType('1')
+    setRequestSettingType('body')
     setVisible(false)
+  }
+
+  const getStateNode = (value: number) => {
+    const state = {
+      1: <Tag color="success">已命中</Tag>,
+      2: <Tag icon={<SyncOutlined spin />} color="processing">待命中</Tag>,
+      3: <Tag color="default">待启用</Tag>
+    }
+
+    {/* @ts-ignore */}
+    return state[value]
   }
 
   return (
@@ -196,7 +222,7 @@ function App() {
                 margin: '12px 0',
               }}
             >
-              <span>Enabled the interceptor: </span>
+              <span>Enabled the proxy: </span>
               <Switch
                 checkedChildren={<CheckOutlined />}
                 unCheckedChildren={<CloseOutlined />}
@@ -209,32 +235,20 @@ function App() {
               config.enabled
               ? (
                 <div>
-                  <Row gutter={16} style={{width: '100%'}}>
-                    <Col span={2}>Setting</Col>
+                  <Row style={{fontSize: "16px", fontWeight: "bold", padding: '8px 15px 8px 0'}}>
                     <Col span={6}>Name</Col>
-                    <Col span={4}>Match</Col>
-                    <Col span={6}>Rule</Col>
-                    <Col span={3}><div style={{textAlign: 'right'}}>Enable</div></Col>
-                    <Col span={3}><div style={{ textAlign: 'right' }}>Delete</div></Col>
+                    <Col span={6}> Match(String | RegExp)</Col>
+                    <Col span={3}>State</Col>
+                    <Col span={3}><div>Enabled</div></Col>
+                    <Col span={6}><div>Action</div></Col>
                   </Row>
 
-                  <div style={{ height: "calc(100vh - 82px)", overflow: "scroll" }}>
+                  <div style={{ height: "calc(100vh - 120px)", overflowY: "scroll" }}>
                     <List
                       dataSource={config.list}
                       renderItem={(item: any, index) => (
                         <List.Item>
-                          <Row gutter={16} style={{width: '100%'}}>
-                            <Col span={2}>
-                              <SettingTwoTone
-                                style={{ cursor: 'pointer', fontSize: '24px' }}
-                                onClick={() => {
-                                  setHandledIndex(index);
-                                  setEditorValue(config.list[index]["response"]);
-                                  setVisible(true);
-                                }}
-                              />
-                            </Col>
-
+                          <Row gutter={16} style={{width: '100%', alignItems: 'center'}}>
                             <Col span={6}>
                               <Input
                                 value={item.name}
@@ -243,19 +257,7 @@ function App() {
                                 }}
                               />
                             </Col>
-                            <Col span={4}>
-                              <Select
-                                defaultValue="Normal"
-                                style={{ width: '100%' }}
-                                value={item.match}
-                                onChange={(value) => {
-                                  rulesChange(index, 'match', value)
-                                }}
-                              >
-                                <Option value="Normal">Normal</Option>
-                                <Option value="RegExp">RegExp</Option>
-                              </Select>
-                            </Col>
+                            
                             <Col span={6}>
                               <Input
                                 value={item.rule}
@@ -264,27 +266,32 @@ function App() {
                                 }}
                               />
                             </Col>
+
                             <Col span={3}>
-                              <div style={{textAlign: 'right'}}>
-                                <Switch
-                                  checkedChildren={<CheckOutlined />}
-                                  unCheckedChildren={<CloseOutlined />}
-                                  checked={item.enabled}
-                                  onChange={(value) => {
-                                    rulesChange(index, 'enabled', value)
-                                  }}
-                                />
-                              </div>
+                              { getStateNode(item.state) }
                             </Col>
+
                             <Col span={3}>
-                              <div style={{ textAlign: 'right' }}>
-                                <DeleteTwoTone
-                                  style={{ cursor: 'pointer', fontSize: '24px' }}
+                              <Switch
+                                checkedChildren={<CheckOutlined />}
+                                unCheckedChildren={<CloseOutlined />}
+                                checked={item.enabled}
+                                onChange={(value) => {
+                                  rulesChange(index, 'enabled', value)
+                                }}
+                              />
+                            </Col>
+                            <Col span={6}>
+                              <Space split={<Divider type="vertical" />}>
+                                <a onClick={() => { deleteRule(index) }}>Delete</a>
+                                <a
                                   onClick={() => {
-                                    deleteRule(index)
+                                    setHandledIndex(index);
+                                    setEditorValue(config.list[index]["response"]);
+                                    setVisible(true);
                                   }}
-                                />
-                              </div>
+                                >Setting</a>
+                              </Space>
                             </Col>
                           </Row>
                         </List.Item>
@@ -325,62 +332,57 @@ function App() {
                         if (value === "RESPONSE") {
                           setEditorValue(config.list[handledIndex]["response"]);
                         } else {
-                          setEditorValue(config.list[handledIndex]["request"]["body"]);
+                          setEditorValue(config.list[handledIndex]["request"][requestSettingType]["value"]);
                         }
                       }}
                     />
                       {
                         settingType === 'REQUEST' && (
-                          <Tabs
-                            activeKey={requestSettingType}
-                            onChange={(value) => {
-                              setRequestSettingType(value);
-                              switch (value) {
-                                case '1':
-                                  setEditorValue(config.list[handledIndex]["request"]["body"]);
-                                  break;
-                                case '2':
-                                  setEditorValue(config.list[handledIndex]["request"]["query"]);
-                                  break;
-                                case '3':
-                                  setEditorValue(config.list[handledIndex]["request"]["headers"]);
-                                  break;
-                              }
-                            }}
-                          >
-                            <TabPane tab="Body" key="1" />
-                            <TabPane tab="Query" key="2" />
-                            <TabPane tab="Header" key="3" />
-                          </Tabs>
+                          <div style={{ display: 'flex' }}>
+                            <Tabs
+                              style={{ flex: 1 }}
+                              activeKey={requestSettingType}
+                              onChange={(value) => {
+                                setRequestSettingType(value);
+                                switch (value) {
+                                  case 'body':
+                                    setEditorValue(config.list[handledIndex]["request"]["body"]["value"]);
+                                    break;
+                                  case 'query':
+                                    setEditorValue(config.list[handledIndex]["request"]["query"]["value"]);
+                                    break;
+                                  case 'headers':
+                                    setEditorValue(config.list[handledIndex]["request"]["headers"]["value"]);
+                                    break;
+                                }
+                              }}
+                            >
+                              <TabPane tab="Body" key="body" />
+                              <TabPane tab="Query" key="query" />
+                              <TabPane tab="Headers" key="headers" />
+                            </Tabs>
+
+                            <Radio.Group
+                              value={config.list[handledIndex]["request"][requestSettingType]["overwritten"]}
+                              buttonStyle="solid"
+                              style={{ marginTop: 14 }}
+                              onChange={(e) => {
+                                const newConfig = {...config};
+                                newConfig.list[handledIndex]["request"][requestSettingType]["overwritten"] = e.target.value;
+                                setConfig(newConfig);
+                              }}
+                            >
+                              <Radio.Button value={false}>Additional</Radio.Button>
+                              <Radio.Button
+                                value={true}
+                                // disabled={requestSettingType === 'headers'}
+                              >Overwritten</Radio.Button>
+                            </Radio.Group>
+                          </div>
                         )
                       }
 
                       <div style={{marginTop: '16px'}}>
-                        {/* <CodeEditor
-                          value={editorValue}
-                          onChange={(value = '') => {
-                            setEditorValue(value);
-                            const newConfig = {...config};
-
-                            if (settingType === 'RESPONSE') {
-                              newConfig.list[handledIndex]["response"] = value;
-                            } else {
-                              switch (requestSettingType) {
-                                case '1':
-                                  newConfig.list[handledIndex]["request"]["body"] = value;
-                                  break;
-                                case '2':
-                                  newConfig.list[handledIndex]["request"]["query"] = value;
-                                  break;
-                                case '3':
-                                  newConfig.list[handledIndex]["request"]["headers"] = value;
-                                  break;
-                              }
-                            }
-
-                            setConfig(newConfig);
-                          }}
-                        /> */}
                         <JsonEditor
                           defaultValue={editorValue} // 不是 control 模式
                           height={
@@ -392,14 +394,14 @@ function App() {
                               newConfig.list[handledIndex]["response"] = value;
                             } else {
                               switch (requestSettingType) {
-                                case '1':
-                                  newConfig.list[handledIndex]["request"]["body"] = value;
+                                case 'body':
+                                  newConfig.list[handledIndex]["request"]["body"]["value"] = value;
                                   break;
-                                case '2':
-                                  newConfig.list[handledIndex]["request"]["query"] = value;
+                                case 'query':
+                                  newConfig.list[handledIndex]["request"]["query"]["value"] = value;
                                   break;
-                                case '3':
-                                  newConfig.list[handledIndex]["request"]["headers"] = value;
+                                case 'headers':
+                                  newConfig.list[handledIndex]["request"]["headers"]["value"] = value;
                                   break;
                               }
                             }

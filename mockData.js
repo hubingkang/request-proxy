@@ -184,3 +184,93 @@ export const request_proxy_config = {
         }
     ]
 }
+
+const testData = [
+    {
+        name: '/article/recommend_all_feed',
+        value: `{
+            "err_no": 0,
+            "err_msg": "success",
+            "data": [
+                {
+                    "item_type": 14,
+                    "item_info": {
+                        "id": 2147,
+                        "advert_id": "7096807386010091533",
+                        "user_id": "53218623894222",
+                        "item_id": "0",
+                        "item_type": 14,
+                        "platform": 2608,
+                        "layout": 1,
+                        "position": 1,
+                        "advert_type": 1,
+                        "station_type": 0,
+                        "author_name": "掘金一周",
+                        "author_id": 53218623894222,
+                        "title": "如何拥有 Star 700+的开源项目、 React18 新特性解读｜掘金一周 2022.05.11",
+                        "brief": "【掘金一周 05.11】本期看点：如何有了星星700+的开源项目、 React18 新特性解读、打造 Go 语言最快的排序算法...",
+                        "url": "https://juejin.cn/post/7096358153381478437?utm_source=feed1&utm_medium=web_feed&utm_campaign=juejin1week_0511",
+                        "picture": "https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4ff7a2ff2b51497c9973c42a708afc8b~tplv-k3u1fbpfcp-watermark.image?",
+                        "avatar": "https://p9-passport.byteacctimg.com/img/user-avatar/0779dd287afeb3e6a983deb0ff79d724~300x300.image",
+                        "start_time": "0",
+                        "end_time": "0",
+                        "ctime": "1652360470",
+                        "mtime": "1652360470",
+                        "sale_count": 0,
+                        "sale_price": 0,
+                        "discount_rate": 0,
+                        "digg_count": 0,
+                        "comment_count": 0,
+                        "topic": "",
+                        "topic_id": "0",
+                        "status": 1,
+                        "item_user_info": {
+                            "user_id": "53218623894222",
+                            "user_name": "掘金一周",
+                            "company": "",
+                            "job_title": "",
+                            "avatar_large": "https://p9-passport.byteacctimg.com/img/user-avatar/0779dd287afeb3e6a983deb0ff79d724~300x300.image",
+                            "level": 3,
+                            "description": "每周掘金优质文章",
+                            "followee_count": 0,
+                            "follower_count": 1395,
+                            "post_article_count": 22,
+                            "digg_article_count": 126,
+                            "got_digg_count": 806,
+                            "got_view_count": 99660,
+                            "post_shortmsg_count": 12,
+                            "digg_shortmsg_count": 13,
+                            "isfollowed": false,
+                            "favorable_author": 0,
+                            "power": 1802,
+                            "study_point": 0,
+                            "university": {
+                                "university_id": "0",
+                                "name": "",
+                                "logo": ""
+                            },
+                            "major": {
+                                "major_id": "0",
+                                "parent_id": "0",
+                                "name": ""
+                            },
+                            "student_status": 0,
+                            "select_event_count": 0,
+                            "select_online_course_count": 0,
+                            "identity": 0,
+                            "is_select_annual": false,
+                            "select_annual_rank": 0,
+                            "annual_list_type": 0,
+                            "extraMap": {},
+                            "is_logout": 0,
+                            "annual_info": []
+                        }
+                    }
+                }
+            ],
+            "cursor": "1",
+            "count": 1000,
+            "has_more": true
+        }`
+    }
+]

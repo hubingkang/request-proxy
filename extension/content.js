@@ -3,16 +3,35 @@ let request_proxy_config = {
   list: []
 };
 
+let iframe;
+let iframeLoaded = false;
+
+// 在页面最开始初始的时候 清空所有 state 值
+chrome.storage.local.get(['request_proxy_config'], (result) => {
+  // 在离开页面的时候，更新页面的状态
+  const payload = result['request_proxy_config'];
+  if (payload) {
+    payload.list = (payload.list).map(item => ({
+      ...item,
+      state: [],
+    }))
+    chrome.storage.local.set({ request_proxy_config: payload })
+  }
+});
+
 // 接收 wrapper 的消息
 window.addEventListener('message', function (e) {
   const { source, payload } = e.data || {}
   if (source === 'wrapper-to-content') {
     chrome.storage.local.set({ request_proxy_config: payload })
 
-    chrome.runtime.sendMessage({
-      source: "content-to-iframe",
-      payload,
-    });
+    // 如果未加载 iframe 则不发送消息，iframe 加载完成后会从 storage 中获取最新的配置
+    if (iframeLoaded) {
+      chrome.runtime.sendMessage({
+        source: "content-to-iframe",
+        payload,
+      });
+    }
   }
 })
 
@@ -39,9 +58,6 @@ script.addEventListener('load', () => {
     });
   });
 });
-
-let iframe;
-let iframeLoaded = false;
 
 // 只在最顶层页面嵌入iframe
 if (window.self === window.top) {
@@ -76,14 +92,18 @@ if (window.self === window.top) {
       document.body.appendChild(iframe);
       let show = false;
 
-      chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-        if (msg === 'toggle') {
+      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        const { source } = message;
+        if (source === 'background-to-content') {
           show = !show;
           iframe.style.setProperty('transform', show ? 'translateX(0)' : 'translateX(100%)', 'important');
         }
-
         sendResponse();
       });
+
+      iframe.onload = function() {
+        iframeLoaded = true;
+      }
     }
   }
 }

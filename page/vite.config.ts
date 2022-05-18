@@ -6,6 +6,9 @@ import copy from 'rollup-plugin-copy';
 // https://vitejs.dev/config/
 export default defineConfig({
   ...(process.env.NODE_ENV === 'production' ? {base: './',} : {}),
+  build: {
+    outDir: "../extension/dist",
+  },
   plugins: [
     react(),
     ...(process.env.NODE_ENV === 'production'
@@ -15,7 +18,7 @@ export default defineConfig({
           }),
           copy({
             targets: [
-              { src: 'public/vs/*', dest: 'dist/vs' },
+              { src: 'public/vs/*', dest: '../extension/dist/vs' },
             ],
             hook: 'writeBundle'
           })

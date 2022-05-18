@@ -116,7 +116,7 @@ function requestHandler(url, body, headers) {
   for (const index in request_proxy_config.list) {
     const { rule, enabled, request } = request_proxy_config.list[index];
 
-    if (!enabled) continue;
+    if (!enabled || !rule) continue;
 
     // 匹配结果
     let matchResult = false;
@@ -129,7 +129,7 @@ function requestHandler(url, body, headers) {
 
     if (!matchResult) continue;
 
-    const state = [];
+    const state = ["RULE_IS_MATCHED"];
     // 更新命中状态
     if (request.body?.value !== "" && !isJSONString(request.body?.value)) {
       // 设置对应值的状态
@@ -143,7 +143,7 @@ function requestHandler(url, body, headers) {
       // 设置对应值的状态
       state.push("REQUEST_HEADERS_JSON_ERROR")
     }
-    request_proxy_config.list[index].state.push(...state);
+    request_proxy_config.list[index].state = state
     sendMessage2Content()
     
     // fetch 请求修改 query 参数
@@ -195,7 +195,7 @@ function responseHandler(url) {
 
   for (const index in request_proxy_config.list) {
     const { rule, enabled, response } = request_proxy_config.list[index];
-    if (!enabled) continue;
+    if (!enabled || !rule) continue;
 
     // 匹配结果
     let matchResult = false;
@@ -209,12 +209,12 @@ function responseHandler(url) {
     if (!matchResult) continue;
 
     // 更新命中状态
-    const state = ["RULE_IS_MATCHED"]
+    const state = []
     if (response !== "" && !isJSONString(response)) {
       // 设置对应值的状态
       state.push("RESPONSE_JSON_ERROR")
     }
-    request_proxy_config.list[index].state = state
+    request_proxy_config.list[index].state.push(...state);
     sendMessage2Content()
 
     // 保证 response 存在并且是一个 JSON 字符串

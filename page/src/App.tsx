@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { CloseOutlined, CheckOutlined, PlusCircleTwoTone, SyncOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { CloseOutlined, CheckOutlined, PlusCircleTwoTone, SyncOutlined, CloseCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import './App.css'
-import { Drawer, Button, List, Input, Row, Col, Radio, Switch, Tabs, Segmented, Tag, Space, Divider } from 'antd';
+import { Drawer, Button, List, Input, Row, Col, Radio, Switch, Tabs, Segmented, Tag, Space, Divider, Tooltip } from 'antd';
 import 'antd/dist/antd.css';
 import useUpdateEffect from './use-update-effect'
 import SplitPane from 'react-split-pane'
@@ -11,38 +11,8 @@ import JsonEditor from './json-editor'
 const { TabPane } = Tabs;
 
 const request_proxy_config = {
-  enabled: true,
-  list: [
-    {
-      name: 'test1',
-      match: 'Normal',
-      // rule: '/shopList/gets',
-      rule: '/budd/shop/draft/examine/list',
-      enabled: true,
-      state: [],
-      request: {
-        body: {
-          overwritten: false,
-          value: '{"offset":10}'
-        },
-        query: {
-          overwritten: false,
-          value: '{"latitude":120.0145264,"longitude":30.2831792,"queryContext":"肯德基"}'
-        },
-        headers: {
-          overwritten: false,
-          value: '{"offset":10}'
-        },
-      },
-      // response: '{"code":0,"data":{},"msg":"ok","success":true}'
-      response: '{"code":0,"data":{"total":12,"list":[{"id":1055,"name":"1全家便利店111","address":"浙江省杭州市余杭区-海创园14幢","contactName":"沧尽","contactMobile":"13313131313","typeId":261,"typeName":"超市/便利店","gmtCreate":1652169465730,"examineStatus":3,"examineRejectReason":"代理商、运营型服务商的门店不能创建商机,shopId=1112119164","examineRemark":"代理商、运营型服务商的门店不能创建商机,shopId=1112119164","shopCreateSourceEnum":"CREATE_OPPO","defaultTip":"审核中,请等待审核通过后再开始签约及安装","mobile":"13313131313","creator":617,"examineTime":1652169490440,"parentTypeName":"购物","importSubject":1,"subjectBizId":0},{"id":1054,"name":"全家便利店九","address":"浙江省杭州市余杭区-未来科技城海创园5号楼一楼","contactName":"沧尽","contactMobile":"13333333333","typeId":98,"typeName":"美容/美发","gmtCreate":1652082205742,"examineStatus":3,"examineRejectReason":"代理商、运营型服务商的门店不能创建商机,shopId=1112119115","examineRemark":"代理商、运营型服务商的门店不能创建商机,shopId=1112119115","shopCreateSourceEnum":"CREATE_OPPO","defaultTip":"审核中,请等待审核通过后再开始签约及安装","mobile":"13333333333","creator":617,"examineTime":1652082615856,"parentTypeName":"休闲娱乐","importSubject":1,"subjectBizId":0}]},"msg":"ok","success":true}'
-    },
-    { name: 'test2', match: 'Normal', rule: '/test', enabled: true, state: 2, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
-    { name: 'test3', match: 'Normal', rule: '/test', enabled: false, state: 3, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
-    { name: 'test4', match: 'RegExp', rule: '/test', enabled: true, state: 1, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
-    { name: 'test5', match: 'Normal', rule: '/test', enabled: false, state: 2, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
-    { name: 'test6', match: 'Normal', rule: '/test', enabled: true, state: 3, request: {body: `{}`, query: `{}`, headers: `{}`}, response: `{}`},
-  ]
+  enabled: false,
+  list: []
 }
 
 const debounce = (function () {
@@ -62,17 +32,13 @@ function App() {
   const [visible, setVisible] = useState<boolean>(false)
   const [settingType, setSettingType] = useState<'REQUEST' | 'RESPONSE'>('RESPONSE');
   const [config, setConfig] = useState<Record<string, any>>({});
-  const [editorValue, setEditorValue] = useState<string>('');
+  const [editorValue, setEditorValue] = useState<Record<string, any>>({ value: '' }); // 当前值使用对象来保存，保证每次更改的值都是不一样的
   const [handledIndex, setHandledIndex] = useState<number>(0); // 当前操作的索引 index
   const [requestSettingType, setRequestSettingType] = useState<string>("body"); // 当前操作的索引 index
 
-  // useEffect(() => {
-  //   localStorage.setItem('request_proxy_config', JSON.stringify(request_proxy_config))
-  // }, [])
-
   useEffect(() => {
     if (chrome.runtime) {
-      console.log('Appjs - chrome.runtime', chrome.runtime)
+      // console.log('Appjs - chrome.runtime', chrome.runtime)
       chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const { source, payload } = message;
         if (source === 'content-to-iframe') {
@@ -185,6 +151,12 @@ function App() {
     setConfig(newConfig);
   }
 
+  const updateEditorValue = (value: string) => {
+    setEditorValue({
+      value: value || '',
+    })
+  }
+
   const cancelDrawer = () => {
     setSettingType('RESPONSE')
     setRequestSettingType('body')
@@ -196,19 +168,36 @@ function App() {
       return <Tag color="default">Disabled</Tag>
     }
 
-    if (states.length === 1) {
-      return <Tag icon={<SyncOutlined spin />} color="success">Is matched</Tag>
-    }
-
     return states.map(item => {
       switch (item) {
+        case 'RULE_IS_MATCHED':
+          return <Tag icon={<SyncOutlined spin />} color="success">Rule is matched</Tag>;
+        case 'RESPONSE_JSON_ERROR':
+          return (
+            <Tooltip placement="top" title="The custom response body JSON is invalid">
+              <Tag icon={<ExclamationCircleOutlined />} color="warning">Response</Tag>
+            </Tooltip>
+          );
         case 'REQUEST_BODY_JSON_ERROR':
-          return <Tag icon={<CloseCircleOutlined />} color="error">Check the request body JSON</Tag>;
+          return (
+            <Tooltip placement="top" title="The custom request body JSON is invalid">
+              <Tag icon={<ExclamationCircleOutlined />} color="warning">Body</Tag>
+            </Tooltip>
+          )
         case 'REQUEST_QUERY_JSON_ERROR':
-          return <Tag icon={<CloseCircleOutlined />} color="error">Check the request query JSON</Tag>
+          return (
+            <Tooltip placement="top" title="The custom request query JSON is invalid">
+              <Tag icon={<ExclamationCircleOutlined />} color="warning">Query</Tag>
+            </Tooltip>
+          )
         case 'REQUEST_HEADERS_JSON_ERROR':
-          return <Tag icon={<CloseCircleOutlined />} color="error">Check the request headers JSON</Tag>
+          return (
+            <Tooltip placement="top" title="The custom request headers JSON is invalid">
+              <Tag icon={<ExclamationCircleOutlined />} color="warning">Headers</Tag>
+            </Tooltip>
+          )
       }
+      return null
     })
   }
 
@@ -262,9 +251,9 @@ function App() {
                   <Row style={{fontSize: "16px", fontWeight: "bold", padding: '8px 15px 8px 0'}}>
                     <Col span={6}>Name</Col>
                     <Col span={6}> Match(String | RegExp)</Col>
-                    <Col span={3}>State</Col>
-                    <Col span={3}><div>Enabled</div></Col>
-                    <Col span={6}><div>Action</div></Col>
+                    <Col span={6}>State</Col>
+                    <Col span={2}><div>Enabled</div></Col>
+                    <Col span={4}><div>Action</div></Col>
                   </Row>
 
                   <div style={{ height: "calc(100vh - 120px)", overflowY: "scroll" }}>
@@ -291,11 +280,13 @@ function App() {
                               />
                             </Col>
 
-                            <Col span={3}>
-                              { getStateNode(item.state) }
+                            <Col span={6}>
+                              <Space size={[0, 8]} wrap>
+                                { getStateNode(item.state) }
+                              </Space>
                             </Col>
 
-                            <Col span={3}>
+                            <Col span={2}>
                               <Switch
                                 checkedChildren={<CheckOutlined />}
                                 unCheckedChildren={<CloseOutlined />}
@@ -305,13 +296,13 @@ function App() {
                                 }}
                               />
                             </Col>
-                            <Col span={6}>
+                            <Col span={4}>
                               <Space split={<Divider type="vertical" />}>
                                 <a onClick={() => { deleteRule(index) }}>Delete</a>
                                 <a
                                   onClick={() => {
                                     setHandledIndex(index);
-                                    setEditorValue(config.list[index]["response"]);
+                                    updateEditorValue(config.list[index]["response"]);
                                     setVisible(true);
                                   }}
                                 >Setting</a>
@@ -354,9 +345,9 @@ function App() {
                       onChange={(value) => {
                         setSettingType(value as any);
                         if (value === "RESPONSE") {
-                          setEditorValue(config.list[handledIndex]["response"]);
+                          updateEditorValue(config.list[handledIndex]["response"]);
                         } else {
-                          setEditorValue(config.list[handledIndex]["request"][requestSettingType]["value"]);
+                          updateEditorValue(config.list[handledIndex]["request"][requestSettingType]["value"]);
                         }
                       }}
                     />
@@ -370,13 +361,13 @@ function App() {
                                 setRequestSettingType(value);
                                 switch (value) {
                                   case 'body':
-                                    setEditorValue(config.list[handledIndex]["request"]["body"]["value"]);
+                                    updateEditorValue(config.list[handledIndex]["request"]["body"]["value"]);
                                     break;
                                   case 'query':
-                                    setEditorValue(config.list[handledIndex]["request"]["query"]["value"]);
+                                    updateEditorValue(config.list[handledIndex]["request"]["query"]["value"]);
                                     break;
                                   case 'headers':
-                                    setEditorValue(config.list[handledIndex]["request"]["headers"]["value"]);
+                                    updateEditorValue(config.list[handledIndex]["request"]["headers"]["value"]);
                                     break;
                                 }
                               }}

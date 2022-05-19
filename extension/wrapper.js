@@ -174,7 +174,7 @@ function requestHandler(url, body, headers) {
     if (isXHR) {
       // 修改 body 参数
       newBody = JSON.stringify({
-        ...(request?.body?.overwritten ? {} : body), // 覆盖默认值不传入原本的 body, XHR body 是个字符串
+        ...(request?.body?.overwritten ? {} : JSON.parse(body)), // 覆盖默认值不传入原本的 body, XHR body 是个字符串
         ...JSON.parse(request?.body.value)
       })
     } else {

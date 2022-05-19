@@ -6,6 +6,17 @@ let request_proxy_config = {
 let iframe;
 let iframeLoaded = false;
 
+// iframe 是否可见
+let visible = false;
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const { source } = message;
+  if (iframeLoaded && source === 'background-to-content') {
+    visible = !visible;
+    iframe.style.setProperty('transform', visible ? 'translateX(0)' : 'translateX(100%)', 'important');
+  }
+  sendResponse();
+});
+
 // 在页面最开始初始的时候 清空所有 state 值
 chrome.storage.local.get(['request_proxy_config'], (result) => {
   // 在离开页面的时候，更新页面的状态
@@ -59,51 +70,36 @@ script.addEventListener('load', () => {
   });
 });
 
-// 只在最顶层页面嵌入iframe
-if (window.self === window.top) {
-  document.onreadystatechange = () => {
-    if (document.readyState === 'complete') {
-      iframe = document.createElement('iframe'); 
-      iframe.id = "request-proxy";
-      iframe.className = "request-proxy";
+window.addEventListener('load', () => {
+  iframe = document.createElement('iframe'); 
+  iframe.id = "request-proxy";
+  iframe.className = "request-proxy";
 
-      const style = {
-        height: '100vh !important',
-        width: '100vw !important',
-        "min-width": '1px !important',
-        position: "fixed !important",
-        top: '0px !important',
-        right: '0px !important',
-        left: '0px !important',
-        bottom: "0 auto !important",
-        "z-index": "999999 !important", // 设置大一些
-        transform: "translateX(100%) !important",
-        transition: "all .4s !important",
-        border: "none",
-      }
-
-      let gatherStyle = "";
-      for (let [key, value] of Object.entries(style)) {
-        gatherStyle += `${key}: ${value};`
-      }
-
-      iframe.style.cssText = gatherStyle;
-      iframe.src = chrome.runtime.getURL("dist/index.html")
-      document.body.appendChild(iframe);
-      let show = false;
-
-      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        const { source } = message;
-        if (source === 'background-to-content') {
-          show = !show;
-          iframe.style.setProperty('transform', show ? 'translateX(0)' : 'translateX(100%)', 'important');
-        }
-        sendResponse();
-      });
-
-      iframe.onload = function() {
-        iframeLoaded = true;
-      }
-    }
+  const style = {
+    height: '100vh !important',
+    width: '100vw !important',
+    "min-width": '1px !important',
+    position: "fixed !important",
+    top: '0px !important',
+    right: '0px !important',
+    left: '0px !important',
+    bottom: "0 auto !important",
+    "z-index": "999999 !important", // 设置大一些
+    transform: "translateX(100%) !important",
+    transition: "all .4s !important",
+    border: "none",
   }
-}
+
+  let gatherStyle = "";
+  for (let [key, value] of Object.entries(style)) {
+    gatherStyle += `${key}: ${value};`
+  }
+
+  iframe.style.cssText = gatherStyle;
+  iframe.src = chrome.runtime.getURL("dist/index.html")
+  document.body.appendChild(iframe);
+  
+  iframe.onload = function() {
+    iframeLoaded = true;
+  }
+})

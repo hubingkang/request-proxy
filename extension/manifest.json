@@ -27,7 +27,7 @@
     "48": "/images/request_proxy_enabled48.png",
     "128": "/images/request_proxy_enabled128.png"
   },
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": ["storage", "activeTab"],
   "web_accessible_resources": [
     {
       "resources": ["wrapper.js", "dist/index.html", "dist/*"],

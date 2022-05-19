@@ -44,7 +44,7 @@ function App() {
         if (source === 'content-to-iframe') {
           setConfig(payload)
         }
-        sendResponse({test: 'test'});
+        sendResponse();
       });
     }
   }, [])

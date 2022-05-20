@@ -37,19 +37,6 @@ function App() {
   const [requestSettingType, setRequestSettingType] = useState<string>("body"); // 当前操作的索引 index
 
   useEffect(() => {
-    if (chrome.runtime) {
-      // console.log('Appjs - chrome.runtime', chrome.runtime)
-      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        const { source, payload } = message;
-        if (source === 'content-to-iframe') {
-          setConfig(payload)
-        }
-        sendResponse();
-      });
-    }
-  }, [])
-
-  useEffect(() => {
     const fn = (event: KeyboardEvent) => {
       if (event.key === "Escape") postMessage2Background();
     }
@@ -61,9 +48,22 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (chrome.runtime) {
+      // console.log('Appjs - chrome.runtime', chrome.runtime)
+      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        const { source, payload } = message;
+        if (source === 'content-to-iframe') {
+          setConfig(payload)
+        }
+        sendResponse();
+      });
+    }
+
     if (chrome.storage) {
       // 通过 postMessage 给 popup 改变图标的样式
       chrome.storage.local.get(['request_proxy_config'], (result) => {
+        console.log("【app】 storage", result)
+
         // console.log('%c App.js 中获取 storage', "font-size: 20px; color: green;", result)
         setConfig(result?.request_proxy_config || {});
       });
@@ -100,7 +100,6 @@ function App() {
       source: 'iframe-to-backgroud'
     });
   }
-
 
   // 全局开关
   const enabledChange = (value: boolean) => {

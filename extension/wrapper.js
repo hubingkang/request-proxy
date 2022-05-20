@@ -5,10 +5,8 @@ let request_proxy_config = {
 
 const CONFIG = "__XHR__CONFIG__"
 
-// 获取 url 参数
-function getUrlParams(url) {
-  const u = new URL(url);
-  const s = new URLSearchParams(u.search);
+function getUrlSearch(str) {
+  const s = new URLSearchParams(str);
   const obj = {};
   s.forEach((v, k) => {
     if (obj.hasOwnProperty(k)) {
@@ -21,6 +19,12 @@ function getUrlParams(url) {
     }
   });
   return obj;
+}
+
+// 获取 url 参数
+function getUrlParams(url) {
+  const [domain, ...search] = url.split('?');
+  return getUrlSearch(search.join("?"))
 }
 
 function isRegExp() {
@@ -49,7 +53,7 @@ function isJSONString(str) {
   return false;
 }
 
-function stringify(obj) {
+function queryStringify(obj) {
   let result = [];
   for (let [key, value] of Object.entries(obj)) {
     if (typeof value === 'function' || value === undefined) continue;
@@ -65,7 +69,18 @@ function stringify(obj) {
       result.push(`${key}=${value}`)
     }
   }
-  return result;
+  return result.join("&");
+}
+
+function urlIsMatched(url, rule) {
+  // 匹配结果
+  let matchResult = false;
+  if (isRegExp(rule)) {
+    matchResult = url.match(new RegExp(rule, 'i'));
+  } else {
+    matchResult = url.includes(rule)
+  }
+  return matchResult
 }
 
 // 处理 url query
@@ -73,13 +88,14 @@ function requestQueryHandle (url, query) {
   const { overwritten, value } = query || {};
 
   if (!isJSONString(value)) return url;
-
-  const params = "?" + stringify({
+  
+  const params = "?" + queryStringify({
     ...(overwritten ? {} : getUrlParams(url)),
     ...JSON.parse(value),
-  }).join('&')
-
-  return url.replace(/\?.*/, params);
+  })
+  
+  let newUrl = url.replace(/\?.*/, ""); // 清除原本存在的值
+  return newUrl + params; // 如果原本有值，则替换，否则追加
 }
 
 function proxyXHRAttribute (target, attr) {
@@ -118,16 +134,7 @@ function requestHandler(url, body, headers) {
 
     if (!enabled || !rule) continue;
 
-    // 匹配结果
-    let matchResult = false;
-
-    if (isRegExp(rule)) {
-      matchResult = url.match(new RegExp(rule, 'i'));
-    } else {
-      matchResult = url.includes(rule)
-    }
-
-    if (!matchResult) continue;
+    if (!urlIsMatched(url, rule)) continue;
 
     const state = ["RULE_IS_MATCHED"];
     // 更新命中状态
@@ -173,15 +180,79 @@ function requestHandler(url, body, headers) {
     // 当前请求来自 ajax
     if (isXHR) {
       // 修改 body 参数
-      newBody = JSON.stringify({
-        ...(request?.body?.overwritten ? {} : JSON.parse(body)), // 覆盖默认值不传入原本的 body, XHR body 是个字符串
-        ...JSON.parse(request?.body.value)
-      })
+      if (body instanceof FormData) {
+        // multipart/form-data：可以上传文件或者键值对，最后都会转化为一条消息
+        let formDataObj = {};
+        if (request?.body?.overwritten) {
+          formDataObj = {
+            ...JSON.parse(request?.body?.value)
+          }
+        } else {
+          for (let [key, value] of body.entries()) {
+            formDataObj[key] = value;
+          }
+          formDataObj = {
+            ...formDataObj,
+            ...JSON.parse(request?.body?.value)
+          }
+        }
+        
+        const formData = new FormData();
+        for (let [key, value] of Object.entries(formDataObj)) {
+          formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
+        }
+        newBody = formData;
+      } else {
+        // 修改 body 参数
+        newBody = JSON.stringify({
+          ...(request?.body?.overwritten ? {} : JSON.parse(body)),
+          ...JSON.parse(request?.body.value)
+        })
+      }
     } else {
-      // 修改 body 参数
-      newBody = {
-        ...(request?.body?.overwritten ? {} : body), // 覆盖默认值不传入原本的 body, Fetch body 是个对象
-        ...JSON.parse(request?.body.value)
+      const contentType = headers["Content-Type"]
+      if (contentType.includes("multipart/form-data") && body instanceof FormData) {
+        // multipart/form-data：可以上传文件或者键值对，最后都会转化为一条消息
+        let formDataObj = {};
+        if (request?.body?.overwritten) {
+          formDataObj = {
+            ...JSON.parse(request?.body?.value)
+          }
+        } else {
+          for (let [key, value] of body.entries()) {
+            formDataObj[key] = value;
+          }
+          formDataObj = {
+            ...formDataObj,
+            ...JSON.parse(request?.body?.value)
+          }
+        }
+        
+        const formData = new FormData();
+        for (let [key, value] of body.entries()) {
+          formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
+        }
+        newBody = formData;
+      } else if (contentType.includes("application/x-www-form-urlencoded")) {
+        // x-www-form-urlencoded：只能上传键值对，而且键值对都是通过&间隔分开的
+        let formDataObj = {};
+        if (request?.body?.overwritten) {
+          formDataObj = {
+            ...JSON.parse(request?.body?.value)
+          }
+        } else {
+          formDataObj = {
+            ...getUrlSearch(body),
+            ...JSON.parse(request?.body?.value)
+          }
+        }
+        newBody = queryStringify(formDataObj);
+      } else {
+        // 修改 body 参数
+        newBody = JSON.stringify({
+          ...(request?.body?.overwritten ? {} : JSON.parse(body)),
+          ...JSON.parse(request?.body.value)
+        })
       }
     }
   }
@@ -197,16 +268,7 @@ function responseHandler(url) {
     const { rule, enabled, response } = request_proxy_config.list[index];
     if (!enabled || !rule) continue;
 
-    // 匹配结果
-    let matchResult = false;
-
-    if (isRegExp(rule)) {
-      matchResult = url.match(new RegExp(rule, 'i'));
-    } else {
-      matchResult = url.includes(rule)
-    }
-
-    if (!matchResult) continue;
+    if (!urlIsMatched(url, rule)) continue;
 
     // 更新命中状态
     const state = []
@@ -239,7 +301,17 @@ fill(xhrproto, 'open', function(originalOpen) {
     if (!request_proxy_config.enabled) return originalOpen.apply(xhr, args);
 
     const [method, url, ...restArgs] = args;
-    const newUrl = requestQueryHandle(url);
+    let newUrl = url;
+
+    for (const index in request_proxy_config.list) {
+      const { rule, enabled, request } = request_proxy_config.list[index];
+      if (!enabled || !rule) continue;
+  
+      if (!urlIsMatched(url, rule)) continue;
+
+      newUrl = requestQueryHandle(url, request.query);
+      break;
+    }
 
     xhr[CONFIG] = { method, url: newUrl };
 
@@ -299,17 +371,18 @@ fill(window, 'fetch', function(originalFetch) {
     if (request_proxy_config.enabled) {
       // 如果 args[1] 参数不存在 表示的是 一个 GET/HEAD 请求，body 为空
       if (args[1]) {
-        const [url, newBody, newHeaders] = requestHandler.call(this, args[0], args[1].body && JSON.parse(args[1].body), args[1].headers);
+        const [url, newBody, newHeaders] = requestHandler.call(this, args[0], args[1].body, args[1].headers);
+
         newArgs = [url, {
           ...args[1],
-          body: JSON.stringify(newBody),
+          body: newBody,
           headers: newHeaders
         }]
       }
     };
   
     return originalFetch.apply(window, newArgs).then(
-      async (response) => {
+      (response) => {
         if (!request_proxy_config.enabled) return response;
         // 如果匹配并成功修改返回值，则 responseJson 为修改后的值、否则 responseJson 为 undefined
         const responseJson = responseHandler(response.url)

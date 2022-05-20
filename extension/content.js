@@ -5,6 +5,7 @@ let request_proxy_config = {
 
 let iframe;
 let iframeLoaded = false;
+let unreceivedMessage = null; // 某些加载情况下会偶发消息未发送，当前存储最新的消息，保证 iframe 加载完成能更新最新的状态
 
 // iframe 是否可见
 let visible = false;
@@ -35,13 +36,15 @@ window.addEventListener('message', function (e) {
   const { source, payload } = e.data || {}
   if (source === 'wrapper-to-content') {
     chrome.storage.local.set({ request_proxy_config: payload })
-
     // 如果未加载 iframe 则不发送消息，iframe 加载完成后会从 storage 中获取最新的配置
     if (iframeLoaded) {
+      unreceivedMessage = null;
       chrome.runtime.sendMessage({
         source: "content-to-iframe",
         payload,
       });
+    } else {
+      unreceivedMessage = payload;
     }
   }
 })
@@ -101,5 +104,14 @@ window.addEventListener('load', () => {
   
   iframe.onload = function() {
     iframeLoaded = true;
+
+    // 同步 onload 之前的最新消息
+    if (unreceivedMessage) {
+      chrome.runtime.sendMessage({
+        source: "content-to-iframe",
+        payload: unreceivedMessage,
+      });
+      unreceivedMessage = null;
+    }
   }
 })

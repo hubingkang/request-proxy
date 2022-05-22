@@ -34,7 +34,7 @@ xhr.onload = function() {
 }
 
 var xhr = new XMLHttpRequest();
-xhr.open("POST", "https://api.juejin.cn/recommend_api/v1/article/recommend_all_feed");
+xhr.open("GET", "https://jsonplaceholder.typicode.com/posts/1");
 xhr.send(JSON.stringify({
   "id_type": 2,
   "client_type": 2608,
@@ -45,3 +45,23 @@ xhr.send(JSON.stringify({
 xhr.onload = function() {
   console.log(xhr.response);
 }
+
+
+// This will return all the posts that belong to the first user
+fetch('https://jsonplaceholder.typicode.com/posts?userId=1')
+  .then((response) => response.json())
+  .then((json) => console.log(json));
+
+fetch('https://jsonplaceholder.typicode.com/posts', {
+  method: 'POST',
+  body: JSON.stringify({
+    title: 'foo',
+    body: 'bar',
+    userId: 1,
+  }),
+  headers: {
+    'Content-type': 'application/json; charset=UTF-8',
+  },
+})
+  .then((response) => response.json())
+  .then((json) => console.log(json));

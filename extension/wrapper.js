@@ -126,8 +126,8 @@ function requestHandler(url, body, headers) {
 
   const isXHR = this instanceof XMLHttpRequest; // true is ajax，false is fetch
 
-  // 过滤 fetch 的 GET/HEAD 请求， Request with GET/HEAD method cannot have body
-  if (!isXHR && !body) return [newUrl, newBody, newHeaders];
+  // // 过滤 fetch 的 GET/HEAD 请求， Request with GET/HEAD method cannot have body
+  // if (!isXHR && !body) return [newUrl, newBody, newHeaders];
 
   for (const index in request_proxy_config.list) {
     const { rule, enabled, request } = request_proxy_config.list[index];
@@ -153,12 +153,12 @@ function requestHandler(url, body, headers) {
     request_proxy_config.list[index].state = state
     sendMessage2Content()
     
-    // fetch 请求修改 query 参数
+    // 1. 设置 query 参数，xhr 单独在 send 做 query 的更新。这里只为 fetch 请求修改 query 参数
     if (!isXHR) {
       newUrl = requestQueryHandle(url, request.query)
     }
 
-    // 设置请求头
+    // 2. 设置请求头
     if (isJSONString(request?.headers?.value)) {
       if (isXHR) {
         // 设置请求头
@@ -172,6 +172,10 @@ function requestHandler(url, body, headers) {
         }
       }
     }
+
+    // 3. 设置 body 参数
+    // 过滤 fetch 的 GET/HEAD 请求， Request with GET/HEAD method cannot have body
+    if (!isXHR && !body) continue;
 
     // // 如果 rule 符合 而 body 不符合 JSON string 格式，则不再向下匹配, 直接跳过, 避免出现两条同样的规则各匹配一部分的情况
     // if (!isJSONString(request?.body?.value)) break;

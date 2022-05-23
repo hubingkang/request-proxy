@@ -119,11 +119,11 @@ function fill(source, name, replacementFactory) {
 }
 
 // 请求处理
-function requestHandler(url, body, headers) {
+function requestHandler(url, body = `{}`, headers, method = "GET") {
   let newUrl = url;
   let newBody = body;
   let newHeaders = headers;
-
+  
   const isXHR = this instanceof XMLHttpRequest; // true is ajax，false is fetch
 
   // // 过滤 fetch 的 GET/HEAD 请求， Request with GET/HEAD method cannot have body
@@ -133,7 +133,6 @@ function requestHandler(url, body, headers) {
     const { rule, enabled, request } = request_proxy_config.list[index];
 
     if (!enabled || !rule) continue;
-
     if (!urlIsMatched(url, rule)) continue;
 
     const state = ["RULE_IS_MATCHED"];
@@ -174,90 +173,44 @@ function requestHandler(url, body, headers) {
     }
 
     // 3. 设置 body 参数
-    // 过滤 fetch 的 GET/HEAD 请求， Request with GET/HEAD method cannot have body
-    if (!isXHR && !body) continue;
+    // GET 和 HEAD 请求不设置 body
+    if (['GET', "HEAD"].includes(method.toUpperCase())) continue;
 
     // // 如果 rule 符合 而 body 不符合 JSON string 格式，则不再向下匹配, 直接跳过, 避免出现两条同样的规则各匹配一部分的情况
     // if (!isJSONString(request?.body?.value)) break;
     if (!isJSONString(request?.body?.value)) continue;
 
-    // 当前请求来自 ajax
-    if (isXHR) {
-      // 修改 body 参数
-      if (body instanceof FormData) {
-        // multipart/form-data：可以上传文件或者键值对，最后都会转化为一条消息
-        let formDataObj = {};
-        if (request?.body?.overwritten) {
-          formDataObj = {
-            ...JSON.parse(request?.body?.value)
-          }
-        } else {
-          for (let [key, value] of body.entries()) {
-            formDataObj[key] = value;
-          }
-          formDataObj = {
-            ...formDataObj,
-            ...JSON.parse(request?.body?.value)
-          }
+    // 暂时只处理格式为 formdata 和 json 的情况  Content-Type 为 application/x-www-form-urlencoded 暂不处理
+    if (!(body instanceof FormData) && !isJSONString(body)) continue;
+
+    if (body instanceof FormData) {
+      // multipart/form-data：可以上传文件或者键值对，最后都会转化为一条消息
+      let formDataObj = {};
+      if (request?.body?.overwritten) {
+        formDataObj = {
+          ...JSON.parse(request?.body?.value)
         }
-        
-        const formData = new FormData();
-        for (let [key, value] of Object.entries(formDataObj)) {
-          formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
-        }
-        newBody = formData;
       } else {
-        // 修改 body 参数
-        newBody = JSON.stringify({
-          ...(request?.body?.overwritten ? {} : JSON.parse(body)),
-          ...JSON.parse(request?.body.value)
-        })
-      }
-    } else {
-      const contentType = headers["Content-Type"]
-      if (contentType.includes("multipart/form-data") && body instanceof FormData) {
-        // multipart/form-data：可以上传文件或者键值对，最后都会转化为一条消息
-        let formDataObj = {};
-        if (request?.body?.overwritten) {
-          formDataObj = {
-            ...JSON.parse(request?.body?.value)
-          }
-        } else {
-          for (let [key, value] of body.entries()) {
-            formDataObj[key] = value;
-          }
-          formDataObj = {
-            ...formDataObj,
-            ...JSON.parse(request?.body?.value)
-          }
-        }
-        
-        const formData = new FormData();
         for (let [key, value] of body.entries()) {
-          formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
+          formDataObj[key] = value;
         }
-        newBody = formData;
-      } else if (contentType.includes("application/x-www-form-urlencoded")) {
-        // x-www-form-urlencoded：只能上传键值对，而且键值对都是通过&间隔分开的
-        let formDataObj = {};
-        if (request?.body?.overwritten) {
-          formDataObj = {
-            ...JSON.parse(request?.body?.value)
-          }
-        } else {
-          formDataObj = {
-            ...getUrlSearch(body),
-            ...JSON.parse(request?.body?.value)
-          }
+        formDataObj = {
+          ...formDataObj,
+          ...JSON.parse(request?.body?.value)
         }
-        newBody = queryStringify(formDataObj);
-      } else {
-        // 修改 body 参数
-        newBody = JSON.stringify({
-          ...(request?.body?.overwritten ? {} : JSON.parse(body)),
-          ...JSON.parse(request?.body.value)
-        })
       }
+      
+      const formData = new FormData();
+      for (let [key, value] of Object.entries(formDataObj)) {
+        formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
+      }
+      newBody = formData;
+    } else {
+      // 修改 body 参数
+      newBody = JSON.stringify({
+        ...(request?.body?.overwritten ? {} : JSON.parse(body)),
+        ...JSON.parse(request?.body.value)
+      })
     }
   }
 
@@ -358,7 +311,8 @@ fill(xhrproto, 'send', function(originalSend) {
     // 未开启拦截
     if (!request_proxy_config.enabled) return originalSend.apply(xhr, args); 
     const [body, ...rest]  = args
-    const [url, newBody] = requestHandler.call(xhr, xhr[CONFIG].url, body);
+    const { method, url } = xhr[CONFIG];
+    const [newUrl, newBody] = requestHandler.call(xhr, url, body, undefined, method);
 
     xhr[CONFIG].body = newBody;
 
@@ -373,16 +327,15 @@ fill(window, 'fetch', function(originalFetch) {
 
     // 开启拦截 修改请求参数
     if (request_proxy_config.enabled) {
+      const { method, body, headers } = args[1] || {};
       // 如果 args[1] 参数不存在 表示的是 一个 GET/HEAD 请求，body 为空
-      if (args[1]) {
-        const [url, newBody, newHeaders] = requestHandler.call(this, args[0], args[1].body, args[1].headers);
+      const [url, newBody, newHeaders] = requestHandler.call(this, args[0], body, headers, method);
 
-        newArgs = [url, {
-          ...args[1],
-          body: newBody,
-          headers: newHeaders
-        }]
-      }
+      newArgs = [url, {
+        ...args[1],
+        ...(body ? { body: newBody } : {}), // 如果原本 body 存在，则设置为新的值
+        headers: newHeaders
+      }]
     };
   
     return originalFetch.apply(window, newArgs).then(

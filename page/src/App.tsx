@@ -386,7 +386,7 @@ function App() {
                                 setConfig(newConfig);
                               }}
                             >
-                              <Radio.Button value={false}>Additional</Radio.Button>
+                              <Radio.Button value={false}>Addition</Radio.Button>
                               <Radio.Button
                                 value={true}
                                 // disabled={requestSettingType === 'headers'}

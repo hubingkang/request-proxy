@@ -21,31 +21,22 @@ fetch("https://randomuser.me/api/", {
 
 // 测试 http://jsonplaceholder.typicode.com/guide/
 var xhr = new XMLHttpRequest();
-xhr.open("POST", "https://api.juejin.cn/recommend_api/v1/article/recommend_all_feed");
-xhr.send(JSON.stringify({
-  "id_type": 2,
-  "client_type": 2608,
-  "sort_type": 200,
-  "cursor": "0",
-  "limit": 100
-}));
+xhr.open("GET", "https://jsonplaceholder.typicode.com/posts?userId=1");
+xhr.send();
 xhr.onload = function() {
   console.log(xhr.response);
 }
 
 var xhr = new XMLHttpRequest();
-xhr.open("GET", "https://jsonplaceholder.typicode.com/posts/1");
+xhr.open("POST", "https://jsonplaceholder.typicode.com/posts");
 xhr.send(JSON.stringify({
-  "id_type": 2,
-  "client_type": 2608,
-  "sort_type": 200,
-  "cursor": "0",
-  "limit": 100
+  title: 'foo',
+  body: 'bar',
+  userId: 1,
 }));
 xhr.onload = function() {
   console.log(xhr.response);
 }
-
 
 // This will return all the posts that belong to the first user
 fetch('https://jsonplaceholder.typicode.com/posts?userId=1')
@@ -60,8 +51,45 @@ fetch('https://jsonplaceholder.typicode.com/posts', {
     userId: 1,
   }),
   headers: {
-    'Content-type': 'application/json; charset=UTF-8',
+    'Content-Type': 'application/json; charset=UTF-8',
   },
 })
   .then((response) => response.json())
   .then((json) => console.log(json));
+
+var formData = new FormData();
+formData.append('test', 'test-value');
+fetch('https://jsonplaceholder.typicode.com/posts', {
+  method: 'POST',
+  body: formData,
+  headers: {
+    'Content-Type': 'application/json; charset=UTF-8',
+  },
+})
+  .then((response) => response.json())
+  .then((json) => console.log(json));
+
+var formData = new FormData();
+formData.append('test', 'test-value');
+fetch('https://jsonplaceholder.typicode.com/posts', {
+  method: 'POST',
+  body: formData,
+  headers: {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  },
+})
+  .then((response) => response.json())
+  .then((json) => console.log(json));
+
+/*
+* // 测试用例
+* 1. 测试 XHR
+*  1.1 get 设置 query、body(自定义会被忽略)、headers （附加、覆盖）
+*  1.2 post 设置 query、body、headers （附加、覆盖）
+*  1.3 formData
+*
+* 2. 测试 Fetch
+*  2.1 get 设置 query、body(自定义会被忽略)、headers （附加、覆盖）
+*  2.2 post 设置 query、body、headers （附加、覆盖）
+*  2.3 formData
+*/

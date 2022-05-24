@@ -81,6 +81,24 @@ fetch('https://jsonplaceholder.typicode.com/posts', {
   .then((response) => response.json())
   .then((json) => console.log(json));
 
+
+const myHeaders = new Headers();
+myHeaders.append('Content-Type', 'text/plain');
+const myRequest = new Request('https://jsonplaceholder.typicode.com/posts', {
+  method: 'POST',
+  headers: myHeaders,
+  body: JSON.stringify({
+    title: 'foo',
+    body: 'bar',
+    userId: 1,
+  })
+});
+fetch(myRequest)
+  .then(response => response.json())
+  .then(json => {
+    console.log(json)
+  });
+
 /*
 * // 测试用例
 * 1. 测试 XHR

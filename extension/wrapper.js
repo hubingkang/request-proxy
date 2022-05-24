@@ -119,7 +119,7 @@ function fill(source, name, replacementFactory) {
 }
 
 // 请求处理
-function requestHandler(url, body = `{}`, headers, method = "GET") {
+function requestHandler(url, body, headers, method = "GET") {
   let newUrl = url;
   let newBody = body;
   let newHeaders = headers;
@@ -313,29 +313,64 @@ fill(xhrproto, 'send', function(originalSend) {
     const [body, ...rest]  = args
     const { method, url } = xhr[CONFIG];
     const [newUrl, newBody] = requestHandler.call(xhr, url, body, undefined, method);
-
     xhr[CONFIG].body = newBody;
 
-    return originalSend.apply(xhr, [newBody, ...rest]);
+    return originalSend.apply(xhr, [...(newBody ? [newBody] : []), ...rest]);
   };
 });
 
 
 fill(window, 'fetch', function(originalFetch) {
-  return function(...args) {
+  return async function(...args) {
     let newArgs = args;
-
     // 开启拦截 修改请求参数
     if (request_proxy_config.enabled) {
-      const { method, body, headers } = args[1] || {};
-      // 如果 args[1] 参数不存在 表示的是 一个 GET/HEAD 请求，body 为空
-      const [url, newBody, newHeaders] = requestHandler.call(this, args[0], body, headers, method);
+      const isFromRequest = args[0] instanceof Request;
+      if (isFromRequest) {
+        const originRequest = args[0];
+        // 这里需要用解构，会从原型上去获取解构的值，如果使用展开运算符无法获取到值
+        // https://developer.mozilla.org/en-US/docs/Web/API/Request/Request
+        const { bodyUsed, cache, credentials, destination, headers, integrity, method, mode, priority, redirect, referrer, referrerPolicy, url } = originRequest
+        let requestBody = undefined;
+        try {
+          // 如果未走 catch  表示 body 获取成功
+          requestBody = await originRequest.clone().json()
+        } catch (error) {
+        }
 
-      newArgs = [url, {
-        ...args[1],
-        ...(body ? { body: newBody } : {}), // 如果原本 body 存在，则设置为新的值
-        headers: newHeaders
-      }]
+        const [newUrl, newBody, newHeaders] = requestHandler.call(this, url, requestBody && JSON.stringify(requestBody), headers, method);
+
+        // 这三个有一个改变都重新创建一个新的 request
+        if (newUrl !== url || newBody !== requestBody || newHeaders !== headers) {
+          const newRequest = new Request(newUrl, {
+            bodyUsed,
+            cache,
+            credentials,
+            destination,
+            headers,
+            integrity,
+            method,
+            mode,
+            priority,
+            redirect,
+            referrer,
+            referrerPolicy,
+            ...(requestBody ? {body: newBody}: {}),
+            headers: newHeaders
+          });
+          newArgs = [newRequest]
+        }
+      } else {
+        const { method, body, headers } = args[1] || {};
+        // 如果 args[1] 参数不存在 表示的是 一个 GET/HEAD 请求，body 为空
+        const [newUrl, newBody, newHeaders] = requestHandler.call(this, args[0], body, headers, method);
+
+        newArgs = [newUrl, {
+          ...args[1],
+          ...(body ? { body: newBody } : {}), // 如果原本 body 存在，则设置为新的值
+          headers: newHeaders
+        }]
+      }
     };
   
     return originalFetch.apply(window, newArgs).then(

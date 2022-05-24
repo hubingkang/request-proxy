@@ -62,7 +62,6 @@ function App() {
     if (chrome.storage) {
       // 通过 postMessage 给 popup 改变图标的样式
       chrome.storage.local.get(['request_proxy_config'], (result) => {
-        console.log("【app】 storage", result)
 
         // console.log('%c App.js 中获取 storage', "font-size: 20px; color: green;", result)
         setConfig(result?.request_proxy_config || {});

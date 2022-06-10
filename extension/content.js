@@ -7,13 +7,25 @@ let iframe;
 let iframeLoaded = false;
 let unreceivedMessage = null; // 某些加载情况下会偶发消息未发送，当前存储最新的消息，保证 iframe 加载完成能更新最新的状态
 
+console.log('content~~~', chrome.runtime)
+// chrome.tabs.query({active: true, currentWindow: true}, function(tabs){
+//   console.log('content~~~2', tabs[0].id)
+// })
+
 // iframe 是否可见
 let visible = false;
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  const { source } = message;
-  if (iframeLoaded && source === 'background-to-content') {
-    visible = !visible;
-    iframe.style.setProperty('transform', visible ? 'translateX(0)' : 'translateX(100%)', 'important');
+  console.log('content 收到消息', message)
+  const { source, payload } = message;
+  // if (iframeLoaded && source === 'background-to-content') {
+  if (source === 'background-to-content') {
+    // visible = !visible;
+    // iframe.style.setProperty('transform', visible ? 'translateX(0)' : 'translateX(100%)', 'important');
+    postMessage({
+      source: 'content-to-wrapper',
+      payload: payload,
+    });
+
   }
   sendResponse();
 });
@@ -34,6 +46,10 @@ chrome.storage.local.get(['request_proxy_config'], (result) => {
 // 接收 wrapper 的消息
 window.addEventListener('message', function (e) {
   const { source, payload } = e.data || {}
+
+  console.log('收到消息1111')
+
+
   if (source === 'wrapper-to-content') {
     chrome.storage.local.set({ request_proxy_config: payload })
     // 如果未加载 iframe 则不发送消息，iframe 加载完成后会从 storage 中获取最新的配置
@@ -49,7 +65,7 @@ window.addEventListener('message', function (e) {
   }
 })
 
-// 在页面上插入代码
+// // 在页面上插入代码
 const script = document.createElement('script');
 script.setAttribute('type', 'text/javascript');
 script.setAttribute('src', chrome.runtime.getURL('wrapper.js'));
@@ -66,52 +82,52 @@ script.addEventListener('load', () => {
     }
 
     // 发送消息给 wrapper.js 这里发送会比 iframe 执行早一些
-    postMessage({
-      source: 'content-to-wrapper',
-      payload: result?.request_proxy_config || request_proxy_config,
-    });
+    // postMessage({
+    //   source: 'content-to-wrapper',
+    //   payload: result?.request_proxy_config || request_proxy_config,
+    // });
   });
 });
 
-window.addEventListener('load', () => {
-  iframe = document.createElement('iframe'); 
-  iframe.id = "request-proxy";
-  iframe.className = "request-proxy";
+// window.addEventListener('load', () => {
+//   iframe = document.createElement('iframe'); 
+//   iframe.id = "request-proxy";
+//   iframe.className = "request-proxy";
 
-  const style = {
-    height: '100vh !important',
-    width: '100vw !important',
-    "min-width": '1px !important',
-    position: "fixed !important",
-    top: '0px !important',
-    right: '0px !important',
-    left: '0px !important',
-    bottom: "0 auto !important",
-    "z-index": "999999 !important", // 设置大一些
-    transform: "translateX(100%) !important",
-    transition: "all .4s !important",
-    border: "none",
-  }
+//   const style = {
+//     height: '100vh !important',
+//     width: '100vw !important',
+//     "min-width": '1px !important',
+//     position: "fixed !important",
+//     top: '0px !important',
+//     right: '0px !important',
+//     left: '0px !important',
+//     bottom: "0 auto !important",
+//     "z-index": "999999 !important", // 设置大一些
+//     transform: "translateX(100%) !important",
+//     transition: "all .4s !important",
+//     border: "none",
+//   }
 
-  let gatherStyle = "";
-  for (let [key, value] of Object.entries(style)) {
-    gatherStyle += `${key}: ${value};`
-  }
+//   let gatherStyle = "";
+//   for (let [key, value] of Object.entries(style)) {
+//     gatherStyle += `${key}: ${value};`
+//   }
 
-  iframe.style.cssText = gatherStyle;
-  iframe.src = chrome.runtime.getURL("dist/index.html")
-  document.body.appendChild(iframe);
+//   iframe.style.cssText = gatherStyle;
+//   iframe.src = chrome.runtime.getURL("dist/index.html")
+//   document.body.appendChild(iframe);
   
-  iframe.onload = function() {
-    iframeLoaded = true;
+//   iframe.onload = function() {
+//     iframeLoaded = true;
 
-    // 同步 onload 之前的最新消息
-    if (unreceivedMessage) {
-      chrome.runtime.sendMessage({
-        source: "content-to-iframe",
-        payload: unreceivedMessage,
-      });
-      unreceivedMessage = null;
-    }
-  }
-})
+//     // 同步 onload 之前的最新消息
+//     if (unreceivedMessage) {
+//       chrome.runtime.sendMessage({
+//         source: "content-to-iframe",
+//         payload: unreceivedMessage,
+//       });
+//       unreceivedMessage = null;
+//     }
+//   }
+// })

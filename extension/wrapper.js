@@ -398,13 +398,14 @@ fill(window, 'fetch', function(originalFetch) {
 // 接收 iframe 的消息 - 修改 request_proxy_config
 window.addEventListener('message', function (e) {
   const { source, payload } = e.data || {}
+  console.log('e=======', e)
   try {
     if (source === 'iframe-to-wrapper') {
       request_proxy_config = payload;
-      // console.log('%c 【wrapper】 ---- 来自 【iframe】 消息', "font-size: 20px; color: red;", payload)
+      console.log('%c 【wrapper】 ---- 来自 【iframe】 消息', "font-size: 20px; color: red;", payload)
     } else if (source === 'content-to-wrapper') {
       request_proxy_config = payload;
-      // console.log('%c 【wrapper】 ---- 来自 【content】 消息', "font-size: 20px; color: red;", payload)
+      console.log('%c 【wrapper】 ---- 来自 【content】 消息', "font-size: 20px; color: red;", payload)
     }
   } catch (error) {
     console.log(error)
@@ -417,3 +418,6 @@ function sendMessage2Content() {
     payload: request_proxy_config,
   }, "*");
 }
+
+console.log('chrome', chrome.runtime)
+

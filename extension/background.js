@@ -56,7 +56,6 @@ const createWindow = () => {
     height: 720,
     top: 100,
   }, (target) => {
-    console.log('target', target.id);
     panel_window_id = target.id;
     // setStorage(REQUEST_PROXY_WINDOW_ID, target.id)
   });

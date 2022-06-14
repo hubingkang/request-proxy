@@ -119,15 +119,14 @@ function fill(source, name, replacementFactory) {
 }
 
 // 请求处理
-function requestHandler(url, body, headers, method = "GET") {
+function requestHandler(url, body, method = "GET") {
   let newUrl = url;
   let newBody = body;
-  let newHeaders = headers;
   
   const isXHR = this instanceof XMLHttpRequest; // true is ajax，false is fetch
 
   // // 过滤 fetch 的 GET/HEAD 请求， Request with GET/HEAD method cannot have body
-  // if (!isXHR && !body) return [newUrl, newBody, newHeaders];
+  // if (!isXHR && !body) return [newUrl, newBody];
 
   for (const index in request_proxy_config.list) {
     const { rule, enabled, request } = request_proxy_config.list[index];
@@ -145,10 +144,7 @@ function requestHandler(url, body, headers, method = "GET") {
       // 设置对应值的状态
       state.push("REQUEST_QUERY_JSON_ERROR")
     }
-    if (request.headers?.value !== "" && !isJSONString(request.headers?.value)) {
-      // 设置对应值的状态
-      state.push("REQUEST_HEADERS_JSON_ERROR")
-    }
+ 
     request_proxy_config.list[index].state = state
     sendMessage2Content()
     
@@ -157,22 +153,7 @@ function requestHandler(url, body, headers, method = "GET") {
       newUrl = requestQueryHandle(url, request.query)
     }
 
-    // 2. 设置请求头
-    if (isJSONString(request?.headers?.value)) {
-      if (isXHR) {
-        // 设置请求头
-        for (const [key, value] of Object.entries(JSON.parse(request?.headers?.value))) {
-          this.setRequestHeader(key, value)
-        }
-      } else {
-        newHeaders = {
-          ...(request?.headers?.overwritten ? {} : headers),
-          ...JSON.parse(request?.headers?.value),
-        }
-      }
-    }
-
-    // 3. 设置 body 参数
+    // 2. 设置 body 参数
     // GET 和 HEAD 请求不设置 body
     if (['GET', "HEAD"].includes(method.toUpperCase())) continue;
 
@@ -214,7 +195,7 @@ function requestHandler(url, body, headers, method = "GET") {
     }
   }
 
-  return [newUrl, newBody, newHeaders];
+  return [newUrl, newBody];
 }
 
 // 响应处理
@@ -338,10 +319,10 @@ fill(window, 'fetch', function(originalFetch) {
         } catch (error) {
         }
 
-        const [newUrl, newBody, newHeaders] = requestHandler.call(this, url, requestBody && JSON.stringify(requestBody), headers, method);
+        const [newUrl, newBody] = requestHandler.call(this, url, requestBody && JSON.stringify(requestBody), method);
 
         // 这三个有一个改变都重新创建一个新的 request
-        if (newUrl !== url || newBody !== requestBody || newHeaders !== headers) {
+        if (newUrl !== url || newBody !== requestBody) {
           const newRequest = new Request(newUrl, {
             bodyUsed,
             cache,
@@ -356,19 +337,17 @@ fill(window, 'fetch', function(originalFetch) {
             referrer,
             referrerPolicy,
             ...(requestBody ? {body: newBody}: {}),
-            headers: newHeaders
           });
           newArgs = [newRequest]
         }
       } else {
-        const { method, body, headers } = args[1] || {};
+        const { method, body } = args[1] || {};
         // 如果 args[1] 参数不存在 表示的是 一个 GET/HEAD 请求，body 为空
-        const [newUrl, newBody, newHeaders] = requestHandler.call(this, args[0], body, headers, method);
+        const [newUrl, newBody] = requestHandler.call(this, args[0], body, method);
 
         newArgs = [newUrl, {
           ...args[1],
           ...(body ? { body: newBody } : {}), // 如果原本 body 存在，则设置为新的值
-          headers: newHeaders
         }]
       }
     };
@@ -400,7 +379,6 @@ window.addEventListener('message', function (e) {
   const { source, payload } = e.data || {}
   try {
     if (source === 'iframe-to-wrapper') {
-      // request_proxy_config = payload;
       // console.log('%c 【wrapper】 ---- 来自 【iframe】 消息', "font-size: 20px; color: red;", payload)
     } else if (source === 'content-to-wrapper') {
       request_proxy_config = payload;

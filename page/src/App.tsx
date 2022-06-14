@@ -29,10 +29,6 @@ const RULE_TEMPLATE = {
       overwritten: false,
       value: ''
     },
-    headers: {
-      overwritten: false,
-      value: ''
-    },
   },
   response: ''
 }
@@ -53,7 +49,7 @@ const debounce = (function () {
 function App() {
   const [visible, setVisible] = useState<boolean>(false)
   const [settingType, setSettingType] = useState<'REQUEST' | 'RESPONSE'>('RESPONSE');
-  const [config, setConfig] = useState<Record<string, any>>({});
+  const [config, setConfig] = useState<Record<string, any>>(DEFAULT_REQUEST_PROXY_CONFIG);
   const [editorValue, setEditorValue] = useState<Record<string, any>>({ value: '' }); // 当前值使用对象来保存，保证每次更改的值都是不一样的
   const [handledIndex, setHandledIndex] = useState<number>(0); // 当前操作的索引 index
   const [requestSettingType, setRequestSettingType] = useState<string>("body"); // 当前操作的索引 index
@@ -85,7 +81,6 @@ function App() {
   // 每次更新值都需要更新
   useUpdateEffect(() => {
     debounce(() => {
-      console.log('chrome.runtime', chrome.runtime)
       // 发送数据给注入到主页面的 js
       if (chrome.storage) {
         chrome.runtime && chrome.runtime.sendMessage(chrome.runtime.id, {
@@ -127,7 +122,8 @@ function App() {
 
   // 新增一条 rule
   const addRule = () => {
-    const newConfig = {...config};
+    const newConfig = { ...config };
+    console.log('newConfig', newConfig)
     newConfig.list.push(RULE_TEMPLATE);
     setConfig(newConfig);
   }
@@ -169,12 +165,6 @@ function App() {
           return (
             <Tooltip placement="top" title="The custom request query JSON is invalid">
               <Tag icon={<ExclamationCircleOutlined />} color="warning">Query</Tag>
-            </Tooltip>
-          )
-        case 'REQUEST_HEADERS_JSON_ERROR':
-          return (
-            <Tooltip placement="top" title="The custom request headers JSON is invalid">
-              <Tag icon={<ExclamationCircleOutlined />} color="warning">Headers</Tag>
             </Tooltip>
           )
       }
@@ -329,15 +319,11 @@ function App() {
                               case 'query':
                                 updateEditorValue(config.list[handledIndex]["request"]["query"]["value"]);
                                 break;
-                              case 'headers':
-                                updateEditorValue(config.list[handledIndex]["request"]["headers"]["value"]);
-                                break;
                             }
                           }}
                         >
                           <TabPane tab="Body" key="body" />
                           <TabPane tab="Query" key="query" />
-                          <TabPane tab="Headers" key="headers" />
                         </Tabs>
 
                         <Radio.Group
@@ -353,7 +339,6 @@ function App() {
                           <Radio.Button value={false}>Addition</Radio.Button>
                           <Radio.Button
                             value={true}
-                            // disabled={requestSettingType === 'headers'}
                           >Overwritten</Radio.Button>
                         </Radio.Group>
                       </div>
@@ -377,9 +362,6 @@ function App() {
                               break;
                             case 'query':
                               newConfig.list[handledIndex]["request"]["query"]["value"] = value;
-                              break;
-                            case 'headers':
-                              newConfig.list[handledIndex]["request"]["headers"]["value"] = value;
                               break;
                           }
                         }

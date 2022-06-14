@@ -44,7 +44,7 @@ const JsonEditor:FC<IProps> = (props) => {
       <Editor
         language="json"
         options={{
-          automaticLayout: true,
+          // automaticLayout: false,
           autoClosingBrackets: "always",
           autoClosingQuotes: "always",
           formatOnPaste: true,
@@ -53,7 +53,7 @@ const JsonEditor:FC<IProps> = (props) => {
           minimap: {
             enabled: false,
           },
-          tabSize: 2,
+          tabSize: 2
         }}
         onMount={handleEditorDidMount}
         height={height}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { CloseOutlined, CheckOutlined, PlusCircleTwoTone, SyncOutlined, CloseCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { CloseOutlined, CheckOutlined, PlusCircleTwoTone, SyncOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { Drawer, Button, List, Input, Row, Col, Radio, Switch, Tabs, Segmented, Tag, Space, Divider, Tooltip } from 'antd';
 import useUpdateEffect from './use-update-effect'
 import waitImg from './assest/wait.png'
@@ -59,29 +59,27 @@ function App() {
   const [requestSettingType, setRequestSettingType] = useState<string>("body"); // 当前操作的索引 index
 
   useEffect(() => {
-    // if (chrome.runtime) {
-    //   // console.log('Appjs - chrome.runtime', chrome.runtime)
-    //   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    //     const { source, payload } = message;
-    //     if (source === 'content-to-iframe') {
-    //       setConfig(payload)
-    //     }
-    //     sendResponse();
-    //   });
-    // }
-
-    if (chrome.storage) {
-      // 通过 postMessage 给 popup 改变图标的样式
-      chrome.storage.local.get(['request_proxy_config'], (result) => {
-
-        // console.log('%c App.js 中获取 storage', "font-size: 20px; color: green;", result)
-        setConfig(result?.request_proxy_config || DEFAULT_REQUEST_PROXY_CONFIG);
+    if (chrome.runtime) {
+      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        const { source, payload } = message;
+        if (source === 'background-to-panel') {
+          setConfig(payload)
+        }
+        sendResponse();
       });
-    } else {
-      // 本地测试通过 localStorage 获取
-      const result = localStorage.getItem('request_proxy_config') || JSON.stringify(DEFAULT_REQUEST_PROXY_CONFIG);
-      setConfig(JSON.parse(result));
     }
+
+    // if (chrome.storage) {
+    //   // 通过 postMessage 给 popup 改变图标的样式
+    //   chrome.storage.local.get(['request_proxy_config'], (result) => {
+    //     // console.log('%c App.js 中获取 storage', "font-size: 20px; color: green;", result)
+    //     setConfig(result?.request_proxy_config || DEFAULT_REQUEST_PROXY_CONFIG);
+    //   });
+    // } else {
+    //   // 本地测试通过 localStorage 获取
+    //   const result = localStorage.getItem('request_proxy_config') || JSON.stringify(DEFAULT_REQUEST_PROXY_CONFIG);
+    //   setConfig(JSON.parse(result));
+    // }
   }, [])
 
   // 每次更新值都需要更新
@@ -91,7 +89,7 @@ function App() {
       // 发送数据给注入到主页面的 js
       if (chrome.storage) {
         chrome.runtime && chrome.runtime.sendMessage(chrome.runtime.id, {
-          source: 'iframe-to-background',
+          source: 'panel-to-background',
           payload: config,
         });
         // console.log('config更新了--调用了 postMessage 和 set strorage')

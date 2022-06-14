@@ -5,7 +5,10 @@ let request_proxy_config = {
 
 const CONFIG = "__XHR__CONFIG__"
 
-function getUrlSearch(str) {
+const REQUEST_PROXY_UTILS = {};
+const REQUEST_PROXY_HANDLE = {};
+
+REQUEST_PROXY_UTILS.getUrlSearch = function(str) {
   const s = new URLSearchParams(str);
   const obj = {};
   s.forEach((v, k) => {
@@ -21,13 +24,8 @@ function getUrlSearch(str) {
   return obj;
 }
 
-// 获取 url 参数
-function getUrlParams(url) {
-  const [domain, ...search] = url.split('?');
-  return getUrlSearch(search.join("?"))
-}
 
-function isRegExp() {
+REQUEST_PROXY_UTILS.isRegExp = function() {
   let isRegExp;
   try {
     isRegExp = eval(reg) instanceof RegExp
@@ -37,7 +35,7 @@ function isRegExp() {
   return isRegExp
 }
 
-function isJSONString(str) {
+REQUEST_PROXY_UTILS.isJSONString = function(str) {
   if (typeof str == 'string') {
     try {
       var obj = JSON.parse(str);
@@ -53,7 +51,7 @@ function isJSONString(str) {
   return false;
 }
 
-function queryStringify(obj) {
+REQUEST_PROXY_UTILS.queryStringify = function(obj) {
   let result = [];
   for (let [key, value] of Object.entries(obj)) {
     if (typeof value === 'function' || value === undefined) continue;
@@ -72,10 +70,10 @@ function queryStringify(obj) {
   return result.join("&");
 }
 
-function urlIsMatched(url, rule) {
+REQUEST_PROXY_UTILS.urlIsMatched = function(url, rule) {
   // 匹配结果
   let matchResult = false;
-  if (isRegExp(rule)) {
+  if (REQUEST_PROXY_UTILS.isRegExp(rule)) {
     matchResult = url.match(new RegExp(rule, 'i'));
   } else {
     matchResult = url.includes(rule)
@@ -83,22 +81,7 @@ function urlIsMatched(url, rule) {
   return matchResult
 }
 
-// 处理 url query
-function requestQueryHandle (url, query) {
-  const { overwritten, value } = query || {};
-
-  if (!isJSONString(value)) return url;
-  
-  const params = "?" + queryStringify({
-    ...(overwritten ? {} : getUrlParams(url)),
-    ...JSON.parse(value),
-  })
-  
-  let newUrl = url.replace(/\?.*/, ""); // 清除原本存在的值
-  return newUrl + params; // 如果原本有值，则替换，否则追加
-}
-
-function proxyXHRAttribute (target, attr) {
+REQUEST_PROXY_UTILS.proxyXHRAttribute = function(target, attr) {
   Object.defineProperty(target, attr, {
     get: () => target[`_${attr}`],
     set: (val) => target[`_${attr}`] = val,
@@ -107,7 +90,7 @@ function proxyXHRAttribute (target, attr) {
 }
 
 // 包装某些对象上的方法，增强函数
-function fill(source, name, replacementFactory) {
+REQUEST_PROXY_UTILS.fill = function(source, name, replacementFactory) {
   if (!(name in source)) return;
 
   const original = source[name];
@@ -118,8 +101,23 @@ function fill(source, name, replacementFactory) {
   }
 }
 
+// 处理 url query
+REQUEST_PROXY_HANDLE.requestQueryHandle = function (url, query) {
+  const { overwritten, value } = query || {};
+
+  if (!REQUEST_PROXY_UTILS.isJSONString(value)) return url;
+  
+  const params = "?" + REQUEST_PROXY_UTILS.queryStringify({
+    ...(overwritten ? {} : REQUEST_PROXY_UTILS.getUrlParams(url)),
+    ...JSON.parse(value),
+  })
+  
+  let newUrl = url.replace(/\?.*/, ""); // 清除原本存在的值
+  return newUrl + params; // 如果原本有值，则替换，否则追加
+}
+
 // 请求处理
-function requestHandler(url, body, method = "GET") {
+REQUEST_PROXY_HANDLE.requestHandler = function (url, body, method = "GET") {
   let newUrl = url;
   let newBody = body;
   
@@ -132,15 +130,15 @@ function requestHandler(url, body, method = "GET") {
     const { rule, enabled, request } = request_proxy_config.list[index];
 
     if (!enabled || !rule) continue;
-    if (!urlIsMatched(url, rule)) continue;
+    if (!REQUEST_PROXY_UTILS.urlIsMatched(url, rule)) continue;
 
     const state = ["RULE_IS_MATCHED"];
     // 更新命中状态
-    if (request.body?.value !== "" && !isJSONString(request.body?.value)) {
+    if (request.body?.value !== "" && !REQUEST_PROXY_UTILS.isJSONString(request.body?.value)) {
       // 设置对应值的状态
       state.push("REQUEST_BODY_JSON_ERROR")
     }
-    if (request.query?.value !== "" && !isJSONString(request.query?.value)) {
+    if (request.query?.value !== "" && !REQUEST_PROXY_UTILS.isJSONString(request.query?.value)) {
       // 设置对应值的状态
       state.push("REQUEST_QUERY_JSON_ERROR")
     }
@@ -150,7 +148,7 @@ function requestHandler(url, body, method = "GET") {
     
     // 1. 设置 query 参数，xhr 单独在 send 做 query 的更新。这里只为 fetch 请求修改 query 参数
     if (!isXHR) {
-      newUrl = requestQueryHandle(url, request.query)
+      newUrl = REQUEST_PROXY_HANDLE.requestQueryHandle(url, request.query)
     }
 
     // 2. 设置 body 参数
@@ -158,11 +156,11 @@ function requestHandler(url, body, method = "GET") {
     if (['GET', "HEAD"].includes(method.toUpperCase())) continue;
 
     // // 如果 rule 符合 而 body 不符合 JSON string 格式，则不再向下匹配, 直接跳过, 避免出现两条同样的规则各匹配一部分的情况
-    // if (!isJSONString(request?.body?.value)) break;
-    if (!isJSONString(request?.body?.value)) continue;
+    // if (!REQUEST_PROXY_UTILS.isJSONString(request?.body?.value)) break;
+    if (!REQUEST_PROXY_UTILS.isJSONString(request?.body?.value)) continue;
 
     // 暂时只处理格式为 formdata 和 json 的情况  Content-Type 为 application/x-www-form-urlencoded 暂不处理
-    if (!(body instanceof FormData) && !isJSONString(body)) continue;
+    if (!(body instanceof FormData) && !REQUEST_PROXY_UTILS.isJSONString(body)) continue;
 
     if (body instanceof FormData) {
       // multipart/form-data：可以上传文件或者键值对，最后都会转化为一条消息
@@ -199,18 +197,18 @@ function requestHandler(url, body, method = "GET") {
 }
 
 // 响应处理
-function responseHandler(url) {
+REQUEST_PROXY_HANDLE.responseHandler = function(url) {
   let result;
 
   for (const index in request_proxy_config.list) {
     const { rule, enabled, response } = request_proxy_config.list[index];
     if (!enabled || !rule) continue;
 
-    if (!urlIsMatched(url, rule)) continue;
+    if (!REQUEST_PROXY_UTILS.urlIsMatched(url, rule)) continue;
 
     // 更新命中状态
     const state = []
-    if (response !== "" && !isJSONString(response)) {
+    if (response !== "" && !REQUEST_PROXY_UTILS.isJSONString(response)) {
       // 设置对应值的状态
       state.push("RESPONSE_JSON_ERROR")
     }
@@ -218,7 +216,7 @@ function responseHandler(url) {
     sendMessage2Content()
 
     // 保证 response 存在并且是一个 JSON 字符串
-    if (isJSONString(response)) {
+    if (REQUEST_PROXY_UTILS.isJSONString(response)) {
       result = JSON.parse(response);
     }
     break;
@@ -230,7 +228,7 @@ function responseHandler(url) {
 // 记录请求的 xhr 和对应的参数，目前不需要，后续 Breadcrumb 可能需要
 const xhrproto = XMLHttpRequest.prototype;
 
-fill(xhrproto, 'open', function(originalOpen) {
+REQUEST_PROXY_UTILS.fill(xhrproto, 'open', function(originalOpen) {
   return function(...args) {
     // 这 this 指向的原本的 XMLHttpRequest 对象，这里只代理对象中的 open 方法
     const xhr = this;
@@ -243,11 +241,11 @@ fill(xhrproto, 'open', function(originalOpen) {
 
     for (const index in request_proxy_config.list) {
       const { rule, enabled, request } = request_proxy_config.list[index];
-      if (!enabled || !rule) continue;
-  
-      if (!urlIsMatched(url, rule)) continue;
 
-      newUrl = requestQueryHandle(url, request.query);
+      if (!enabled || !rule) continue;
+      if (!REQUEST_PROXY_UTILS.urlIsMatched(url, rule)) continue;
+
+      newUrl = REQUEST_PROXY_HANDLE.requestQueryHandle(url, request.query);
       break;
     }
 
@@ -255,12 +253,12 @@ fill(xhrproto, 'open', function(originalOpen) {
 
     const onreadystatechangeHandler = function() {
       if (xhr.readyState === 4) {
-        const responseJson = responseHandler(newUrl);
+        const responseJson = REQUEST_PROXY_HANDLE.responseHandler(newUrl);
         // 如果待修改的 responseJson 有值，则代理响应结果
         if (responseJson) {
           // 代理 xhr 属性 - 目的是代理劫持返回数据
-          proxyXHRAttribute(this, 'responseText');
-          proxyXHRAttribute(this, 'response');
+          REQUEST_PROXY_UTILS.proxyXHRAttribute(this, 'responseText');
+          REQUEST_PROXY_UTILS.proxyXHRAttribute(this, 'response');
 
           // 下面的会被代理到 _[attr] 上
           xhr.responseText = responseJson;
@@ -270,7 +268,7 @@ fill(xhrproto, 'open', function(originalOpen) {
     };
 
     if ('onreadystatechange' in xhr && typeof xhr.onreadystatechange === 'function') {
-      fill(xhr, 'onreadystatechange', function(original) {
+      REQUEST_PROXY_UTILS.fill(xhr, 'onreadystatechange', function(original) {
         return function(...readyStateArgs) {
           onreadystatechangeHandler();
           return original.apply(xhr, readyStateArgs);
@@ -285,7 +283,7 @@ fill(xhrproto, 'open', function(originalOpen) {
 });
 
 // send 函数中只能获取 body 参数
-fill(xhrproto, 'send', function(originalSend) {
+REQUEST_PROXY_UTILS.fill(xhrproto, 'send', function(originalSend) {
   return function(...args) {
     const xhr = this;
     
@@ -293,7 +291,7 @@ fill(xhrproto, 'send', function(originalSend) {
     if (!request_proxy_config.enabled) return originalSend.apply(xhr, args); 
     const [body, ...rest]  = args
     const { method, url } = xhr[CONFIG];
-    const [newUrl, newBody] = requestHandler.call(xhr, url, body, undefined, method);
+    const [newUrl, newBody] = REQUEST_PROXY_HANDLE.requestHandler.apply(xhr, [url, body, undefined, method]);
     xhr[CONFIG].body = newBody;
 
     return originalSend.apply(xhr, [...(newBody ? [newBody] : []), ...rest]);
@@ -301,7 +299,7 @@ fill(xhrproto, 'send', function(originalSend) {
 });
 
 
-fill(window, 'fetch', function(originalFetch) {
+REQUEST_PROXY_UTILS.fill(window, 'fetch', function(originalFetch) {
   return async function(...args) {
     let newArgs = args;
     // 开启拦截 修改请求参数
@@ -319,7 +317,7 @@ fill(window, 'fetch', function(originalFetch) {
         } catch (error) {
         }
 
-        const [newUrl, newBody] = requestHandler.call(this, url, requestBody && JSON.stringify(requestBody), method);
+        const [newUrl, newBody] = REQUEST_PROXY_HANDLE.requestHandler.apply(this, [ url, requestBody && JSON.stringify(requestBody), method ]);
 
         // 这三个有一个改变都重新创建一个新的 request
         if (newUrl !== url || newBody !== requestBody) {
@@ -343,7 +341,7 @@ fill(window, 'fetch', function(originalFetch) {
       } else {
         const { method, body } = args[1] || {};
         // 如果 args[1] 参数不存在 表示的是 一个 GET/HEAD 请求，body 为空
-        const [newUrl, newBody] = requestHandler.call(this, args[0], body, method);
+        const [newUrl, newBody] = REQUEST_PROXY_HANDLE.requestHandler.apply(this, [args[0], body, method]);
 
         newArgs = [newUrl, {
           ...args[1],
@@ -356,7 +354,7 @@ fill(window, 'fetch', function(originalFetch) {
       (response) => {
         if (!request_proxy_config.enabled) return response;
         // 如果匹配并成功修改返回值，则 responseJson 为修改后的值、否则 responseJson 为 undefined
-        const responseJson = responseHandler(response.url)
+        const responseJson = REQUEST_PROXY_HANDLE.responseHandler(response.url)
 
         // 如果 json 未被赋予新的值，则返回原有的 response
         if (!responseJson) {

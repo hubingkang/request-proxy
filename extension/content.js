@@ -17,7 +17,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       source: 'content-to-wrapper',
       payload: payload,
     });
-  }
+  } 
+  // if (source === 'background-to-content-hasLoadedWrapper') {
+  //   // 判断是否加载了 wrapper.js
+  //   const dom = document.getElementById(request-proxy-wrapper);
+  //   sendResponse(!!dom);
+  // }
   sendResponse();
 });
 
@@ -25,9 +30,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 const script = document.createElement('script');
 script.setAttribute('type', 'text/javascript');
 script.setAttribute('src', chrome.runtime.getURL('wrapper.js'));
+// script.setAttribute('id', "request-proxy-wrapper");
 document.documentElement.appendChild(script);
 
 script.addEventListener('load', () => {
+  // content -> background -> content -> wrapper 多走一圈目的是将 background 的数据带过来
   chrome.runtime.sendMessage({
     source: "content-to-background",
   }, () => {

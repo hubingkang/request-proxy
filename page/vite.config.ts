@@ -2,8 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import replace from '@rollup/plugin-replace';
 import copy from 'rollup-plugin-copy';
+import del from 'rollup-plugin-delete'
+// import { visualizer } from "rollup-plugin-visualizer";
 
-// https://vitejs.dev/config/
 export default defineConfig({
   ...(process.env.NODE_ENV === 'production' ? {base: './',} : {}),
   build: {
@@ -25,5 +26,8 @@ export default defineConfig({
         ]
       : []
     ),
+    // @ts-ignore
+    del({ targets: '../extension/dist/*', force: true }),
+    // visualizer(),
   ]
 })

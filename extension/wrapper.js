@@ -132,7 +132,8 @@ REQUEST_PROXY_HANDLE.requestHandler = function (url, body, method = "GET") {
     if (!enabled || !rule) continue;
     if (!REQUEST_PROXY_UTILS.urlIsMatched(url, rule)) continue;
 
-    const state = ["RULE_IS_MATCHED"];
+    const state = ["MATCHED"];
+
     // 更新命中状态
     if (request.body?.value !== "" && !REQUEST_PROXY_UTILS.isJSONString(request.body?.value)) {
       // 设置对应值的状态
@@ -160,7 +161,7 @@ REQUEST_PROXY_HANDLE.requestHandler = function (url, body, method = "GET") {
     if (!REQUEST_PROXY_UTILS.isJSONString(request?.body?.value)) continue;
 
     // 暂时只处理格式为 formdata 和 json 的情况  Content-Type 为 application/x-www-form-urlencoded 暂不处理
-    if (!(body instanceof FormData) && !REQUEST_PROXY_UTILS.isJSONString(body)) continue;
+    if (!(body instanceof FormData) || !REQUEST_PROXY_UTILS.isJSONString(body)) continue;
 
     if (body instanceof FormData) {
       // multipart/form-data：可以上传文件或者键值对，最后都会转化为一条消息
@@ -225,7 +226,7 @@ REQUEST_PROXY_HANDLE.responseHandler = function(url) {
   return result;
 }
 
-// 记录请求的 xhr 和对应的参数，目前不需要，后续 Breadcrumb 可能需要
+
 const xhrproto = XMLHttpRequest.prototype;
 
 REQUEST_PROXY_UTILS.fill(xhrproto, 'open', function(originalOpen) {
@@ -297,7 +298,6 @@ REQUEST_PROXY_UTILS.fill(xhrproto, 'send', function(originalSend) {
     return originalSend.apply(xhr, [...(newBody ? [newBody] : []), ...rest]);
   };
 });
-
 
 REQUEST_PROXY_UTILS.fill(window, 'fetch', function(originalFetch) {
   return async function(...args) {
@@ -376,9 +376,7 @@ REQUEST_PROXY_UTILS.fill(window, 'fetch', function(originalFetch) {
 window.addEventListener('message', function (e) {
   const { source, payload } = e.data || {}
   try {
-    if (source === 'iframe-to-wrapper') {
-      // console.log('%c 【wrapper】 ---- 来自 【iframe】 消息', "font-size: 20px; color: red;", payload)
-    } else if (source === 'content-to-wrapper') {
+    if (source === 'content-to-wrapper') {
       request_proxy_config = payload;
       // console.log('%c 【wrapper】 ---- 来自 【content】 消息', "font-size: 20px; color: red;", payload)
     }

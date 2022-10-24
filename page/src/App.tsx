@@ -63,19 +63,15 @@ function App() {
         }
         sendResponse();
       });
-    }
 
-    // if (chrome.storage) {
-    //   // 通过 postMessage 给 popup 改变图标的样式
-    //   chrome.storage.local.get(['request_proxy_config'], (result) => {
-    //     // console.log('%c App.js 中获取 storage', "font-size: 20px; color: green;", result)
-    //     setConfig(result?.request_proxy_config || DEFAULT_REQUEST_PROXY_CONFIG);
-    //   });
-    // } else {
-    //   // 本地测试通过 localStorage 获取
-    //   const result = localStorage.getItem('request_proxy_config') || JSON.stringify(DEFAULT_REQUEST_PROXY_CONFIG);
-    //   setConfig(JSON.parse(result));
-    // }
+
+      // 从 backgroud 获取初始化数据
+      chrome.runtime && chrome.runtime.sendMessage(chrome.runtime.id, {
+        source: 'panel-to-background',
+      }, (value) => {
+        setConfig(value)
+      });
+    }
   }, [])
 
   // 每次更新值都需要更新
@@ -87,9 +83,9 @@ function App() {
           source: 'panel-to-background',
           payload: config,
         });
-        // console.log('config更新了--调用了 postMessage 和 set strorage')
+        console.log('config更新了--调用了 postMessage 和 set strorage')
         // 更新 chrome.storage.local
-        chrome.storage.local.set({"request_proxy_config": config});
+        // chrome.storage.local.set({"request_proxy_config": config});
       } else {
         localStorage.setItem('request_proxy_config', JSON.stringify(config))
         // console.log('config更新了-- 设置了localstorage')
@@ -123,8 +119,7 @@ function App() {
   // 新增一条 rule
   const addRule = () => {
     const newConfig = { ...config };
-    console.log('newConfig', newConfig)
-    newConfig.list.push(RULE_TEMPLATE);
+    newConfig.list.push(JSON.parse(JSON.stringify(RULE_TEMPLATE)));
     setConfig(newConfig);
   }
 
@@ -147,8 +142,8 @@ function App() {
 
     return states.map(item => {
       switch (item) {
-        case 'RULE_IS_MATCHED':
-          return <Tag icon={<SyncOutlined spin />} color="success">Rule is matched</Tag>;
+        case 'MATCHED':
+          return <Tag icon={<SyncOutlined spin />} color="success">matched</Tag>;
         case 'RESPONSE_JSON_ERROR':
           return (
             <Tooltip placement="top" title="The custom response body JSON is invalid">
@@ -203,7 +198,7 @@ function App() {
             <div>
               <Row style={{fontSize: "16px", fontWeight: "bold", padding: '8px 15px 8px 0'}}>
                 <Col span={6}>Name</Col>
-                <Col span={6}> Match(String | RegExp)</Col>
+                <Col span={6}>Match(String | RegExp)</Col>
                 <Col span={6}>State</Col>
                 <Col span={2}><div>Enabled</div></Col>
                 <Col span={4}><div>Action</div></Col>

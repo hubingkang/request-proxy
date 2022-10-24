@@ -15,10 +15,10 @@
   },
   "action": {
     "default_icon": {
-      "16": "/images/request_proxy_enabled16.png",
-      "32": "/images/request_proxy_enabled32.png",
-      "48": "/images/request_proxy_enabled48.png",
-      "128": "/images/request_proxy_enabled128.png"
+      "16": "/images/request_proxy_disabled16.png",
+      "32": "/images/request_proxy_disabled32.png",
+      "48": "/images/request_proxy_disabled48.png",
+      "128": "/images/request_proxy_disabled128.png"
     }
   },
   "icons": {
@@ -27,11 +27,12 @@
     "48": "/images/request_proxy_enabled48.png",
     "128": "/images/request_proxy_enabled128.png"
   },
-  "permissions": ["storage", "activeTab"],
+  "permissions": ["storage", "activeTab", "scripting"],
   "web_accessible_resources": [
     {
       "resources": ["wrapper.js", "dist/index.html", "dist/*"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "host_permissions": ["<all_urls>"]
 }

@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react'
 
-import { MessageType } from '@/entrypoints/types'
+import * as monaco from 'monaco-editor'
+import { loader } from '@monaco-editor/react'
+import Editor from '@monaco-editor/react'
+
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
+import { PlusCircle, Trash2, Languages } from 'lucide-react'
+import { Toaster } from '@/components/ui/sonner'
+import { toast } from 'sonner'
+import { useUpdateEffect } from 'react-use'
+
+import { RequestProxyRule } from '@/entrypoints/types'
 
 import { Button } from '@/components/ui/button.tsx'
 import { Input } from '@/components/ui/input'
@@ -12,35 +23,37 @@ import {
   ResizablePanelGroup,
 } from '@/components/ui/resizable'
 
-import * as monaco from 'monaco-editor'
-import { loader } from '@monaco-editor/react'
-import Editor from '@monaco-editor/react'
-
-import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
-import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
-import { PlusCircle } from 'lucide-react'
-import { Toaster } from '@/components/ui/sonner'
-import { toast } from 'sonner'
-import { useUpdateEffect } from 'react-use'
-import { sendMessage, onMessage } from 'webext-bridge/options'
-import { cn } from '@/lib/utils'
-
-import { RequestProxyRule } from '@/entrypoints/types'
+import { generateRandomString, isValidJson } from '@/lib'
 
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
 
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { useTranslation } from 'react-i18next'
+
 import './App.css'
+import { cn } from '@/lib/utils'
+import languages from '@/components/i18nConfig'
+
+declare global {
+  interface Window {
+    MonacoEnvironment: {
+      getWorker(workerId: string, label: string): Worker
+    }
+  }
+}
 
 self.MonacoEnvironment = {
-  getWorker(workerId, label) {
+  getWorker(_workerId: any, label: any) {
     if (label === 'json') {
       return new jsonWorker()
     }
@@ -61,32 +74,20 @@ const editorOptions = {
   minimap: {
     enabled: false,
   },
-}
-
-function generateRandomString() {
-  return Math.random().toString(36).substring(2, 8)
-}
-
-// 验证JSON格式
-const isValidJson = (value: string): boolean => {
-  try {
-    JSON.parse(value)
-    return true
-  } catch (e) {
-    return false
-  }
+  formatOnPaste: true,
+  formatOnType: true,
 }
 
 const DEFAULT_REQUEST: RequestProxyRule = {
-  name: '新请求',
+  name: '',
   rule: '',
   method: 'GET' as const,
   enabled: true,
   matched: false,
-  query: JSON.stringify({}, null, 2),
-  body: JSON.stringify({}, null, 2),
-  headers: JSON.stringify({}, null, 2),
-  response: JSON.stringify({}, null, 2),
+  query: '',
+  body: '',
+  headers: '',
+  response: '',
   overwriteRequest: true,
   overwriteResponse: true,
 }
@@ -116,15 +117,22 @@ function RequestEditor({
   setRequests,
 }: RequestEditorProps) {
   // 添加 Monaco Editor 的配置选项
+  const { t } = useTranslation()
 
   const onSaveRequest = () => {
     // setRequests([...requests, selectedRequest])
     const res = ['query', 'body', 'headers', 'response'].every((item) => {
-      return !selectedRequest[item] || isValidJson(selectedRequest[item])
+      const value = selectedRequest?.[item as keyof RequestProxyRule] as string
+      return !value || isValidJson(value)
     })
 
+    if (selectedRequest.rule === '') {
+      toast.error(t('pleaseEnterRequestRule'))
+      return
+    }
+
     if (!res) {
-      toast.error('请输入正确的JSON格式')
+      toast.error(t('pleaseEnterCorrectJsonFormat'))
       return
     }
 
@@ -143,14 +151,14 @@ function RequestEditor({
         id: generateRandomString(),
       }
       newRequests = [...requests, newRequestItem]
+      setSelectedRequest(newRequestItem)
     }
 
     setRequests(newRequests)
-    // handleSaveRequest(newRequests)
   }
 
   return (
-    <div className="w-full h-full p-6 flex flex-col">
+    <div className="w-full h-full p-4 flex flex-col">
       <div className="flex items-center justify-between gap-2 mb-4">
         <Select
           value={selectedRequest.method}
@@ -175,7 +183,7 @@ function RequestEditor({
         </Select>
 
         <Input
-          placeholder="请输入请求URL"
+          placeholder={t('requestRulePlaceholder')}
           value={selectedRequest.rule}
           onChange={(e) => {
             // 处理URL更新
@@ -186,7 +194,7 @@ function RequestEditor({
           }}
         />
         <Input
-          placeholder="请输入请求名称"
+          placeholder={t('requestNamePlaceholder')}
           value={selectedRequest.name}
           onChange={(e) => {
             // 处理URL更新
@@ -200,7 +208,7 @@ function RequestEditor({
 
       <div className="flex-1 flex gap-4 min-h-0">
         <div className="flex-1 flex flex-col">
-          <h2 className="text-lg font-bold mb-4">请求参数</h2>
+          <h2 className="text-lg font-bold mb-4">{t('request')}</h2>
           <div className="flex-1 border rounded-lg overflow-hidden">
             <Tabs
               defaultValue="query"
@@ -234,7 +242,7 @@ function RequestEditor({
         </div>
 
         <div className="flex-1 flex flex-col">
-          <h2 className="text-lg font-bold mb-4">返回响应</h2>
+          <h2 className="text-lg font-bold mb-4">{t('response')}</h2>
           <div className="flex-1 border rounded-lg overflow-hidden">
             <Editor
               height="100%"
@@ -265,7 +273,7 @@ function RequestEditor({
                 })
               }}
             />
-            <label>覆盖请求参数</label>
+            <label>{t('overrideRequest')}</label>
           </div>
 
           <div className="flex items-center gap-2">
@@ -279,20 +287,23 @@ function RequestEditor({
                 })
               }}
             />
-            <label>覆盖返回结果</label>
+            <label>{t('overrideResponse')}</label>
           </div>
         </div>
-        <Button onClick={onSaveRequest}>保存</Button>
+        <Button onClick={onSaveRequest}>{t('save')}</Button>
       </div>
     </div>
   )
 }
 
 function App() {
-  const [enabled, setEnabled] = useState(true)
-  const [requests, setRequests] = useState<RequestProxyRule[]>([])
+  const { t, i18n } = useTranslation()
 
-  const [selectedRequest, setSelectedRequest] = useState<RequestProxyRule>()
+  const [enabled, setEnabled] = useState<boolean>(false)
+  const [requests, setRequests] = useState<RequestProxyRule[]>([])
+  const [language, setLanguage] = useState<'en' | 'zh_CN'>('en')
+  const [selectedRequest, setSelectedRequest] =
+    useState<RequestProxyRule | null>(null)
 
   const [selectedRequestTab, setSelectedRequestTab] = useState<
     'query' | 'body' | 'headers'
@@ -303,10 +314,26 @@ function App() {
       const { source, payload } = e.data || {}
       if (source === 'content-to-iframe') {
         setRequests(payload.list || [])
-        setEnabled(payload.enabled || true)
+        setEnabled(payload.enabled)
         setSelectedRequest(payload.list[0] || null)
+        setLanguage(payload.language || 'en')
+        i18n.changeLanguage(payload.language || 'en')
+      } else if (source === 'wrapper-to-iframe') {
+        setRequests(payload.list || [])
+        setEnabled(payload.enabled)
       }
     })
+
+    window.parent.postMessage(
+      {
+        source: 'iframe-to-content-request-init-data',
+      },
+      '*'
+    )
+
+    return () => {
+      window.removeEventListener('message', () => {})
+    }
   }, [])
 
   useUpdateEffect(() => {
@@ -330,37 +357,41 @@ function App() {
       },
       '*'
     )
-  }, [requests])
+  }, [requests, enabled])
 
-  async function sendMessageToBackground() {
-    let response = await browser.runtime.sendMessage({
-      eventType: MessageType.clickExtIcon,
-    })
-    console.log(response)
-  }
+  useUpdateEffect(() => {
+    i18n.changeLanguage(language)
+  }, [language])
 
-  const handleSaveRequest = (requests: any) => {
-    window.parent.postMessage(
-      {
-        source: 'iframe-to-wrapper',
-        payload: {
-          list: requests,
-          enabled: enabled,
-        },
-      },
-      '*'
-    )
-    window.parent.postMessage(
-      {
-        source: 'iframe-to-content',
-        payload: {
-          list: requests,
-          enabled: enabled,
-        },
-      },
-      '*'
-    )
-  }
+  // async function sendMessageToBackground() {
+  //   let response = await browser.runtime.sendMessage({
+  //     eventType: MessageType.clickExtIcon,
+  //   })
+  //   console.log(response)
+  // }
+
+  // const handleSaveRequest = (requests: any) => {
+  //   window.parent.postMessage(
+  //     {
+  //       source: 'iframe-to-wrapper',
+  //       payload: {
+  //         list: requests,
+  //         enabled: enabled,
+  //       },
+  //     },
+  //     '*'
+  //   )
+  //   window.parent.postMessage(
+  //     {
+  //       source: 'iframe-to-content',
+  //       payload: {
+  //         list: requests,
+  //         enabled: enabled,
+  //       },
+  //     },
+  //     '*'
+  //   )
+  // }
 
   const handleClose = () => {
     window.parent.postMessage(
@@ -372,8 +403,10 @@ function App() {
     )
   }
 
+  console.log('enabled', enabled)
+
   return (
-    <div className="w-screen h-screen p-8">
+    <div className="w-screen h-screen p-8 text-base">
       <div
         className="bg-black/40 w-full h-full fixed top-0 left-0 flex items-center justify-center p-8"
         onClick={() => {
@@ -381,34 +414,76 @@ function App() {
         }}
       >
         <div
-          className="bg-white w-full max-w-[1200px] h-[800px] rounded-lg"
+          className="bg-white w-full max-w-[90vw] h-[90vh] rounded-lg flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
+          <div className="flex items-center justify-between border-b py-3 px-4 gap-4">
+            <div className="flex items-center gap-2">
+              <span>{t('enableProxy')}：</span>
+              <Switch
+                id="overwrite-request"
+                checked={enabled}
+                onCheckedChange={(checked) => {
+                  setEnabled(checked)
+                }}
+              />
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Languages className="size-4 cursor-pointer hover:text-primary" />
+              </PopoverTrigger>
+              <PopoverContent className="w-auto">
+                <div className="flex flex-col gap-2">
+                  {languages.map((item: any) => (
+                    <div
+                      key={item.locale}
+                      className={cn('cursor-pointer hover:text-primary', {
+                        'text-primary': language === item.locale,
+                      })}
+                      onClick={() => {
+                        setLanguage(item.locale as 'en' | 'zh_CN')
+                      }}
+                    >
+                      {item.name}
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
           <ResizablePanelGroup
             direction="horizontal"
-            className="rounded-lg border md:min-w-[450px]"
+            className="rounded-lg md:min-w-[450px]"
           >
-            <ResizablePanel defaultSize={20}>
-              <div className="h-full p-4">
+            <ResizablePanel defaultSize={25}>
+              <div className="h-full p-4 flex flex-col">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">请求管理</h2>
+                  <h2 className="text-lg font-semibold">
+                    {t('requestManagement')}
+                  </h2>
                   <Button
-                    size="icon"
                     variant="secondary"
                     onClick={() => {
                       setSelectedRequest({ ...DEFAULT_REQUEST })
                     }}
+                    disabled={!enabled}
+                    className="hover:text-primary"
                   >
                     <PlusCircle className="h-6 w-6" />
                   </Button>
                 </div>
-                <div className="space-y-2">
+                <div className="flex-1 space-y-1 overflow-y-auto">
                   {requests.map((request) => (
                     <div
                       key={request.id}
-                      className={`p-2 rounded cursor-pointer hover:bg-accent ${
-                        selectedRequest?.id === request.id ? 'bg-accent' : ''
-                      }`}
+                      className={cn(
+                        'p-2 rounded cursor-pointer hover:bg-accent',
+                        {
+                          'bg-accent': selectedRequest?.id === request.id,
+                          'bg-primary/20 text-white hover:bg-primary/30':
+                            request.matched,
+                        }
+                      )}
                       onClick={() => {
                         setSelectedRequest({
                           ...request,
@@ -420,8 +495,18 @@ function App() {
                         })
                       }}
                     >
-                      <div className="font-medium flex items-center justify-between">
-                        <div>{request.name}</div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        <div
+                          className={`text-xs font-bold ${
+                            METHOD_COLOR_MAP[request.method]
+                          }`}
+                        >
+                          {request.method}
+                        </div>
+                        <div className="flex-1 truncate">
+                          {request.name || request.rule}
+                        </div>
+
                         <Switch
                           id="airplane-mode"
                           checked={request.enabled}
@@ -436,16 +521,20 @@ function App() {
                             )
                           }}
                         />
-                      </div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-2">
-                        <div
-                          className={`text-xs font-bold ${
-                            METHOD_COLOR_MAP[request.method]
-                          }`}
-                        >
-                          {request.method}
-                        </div>
-                        <div className="flex-1 truncate">{request.rule}</div>
+
+                        <Trash2
+                          className="size-4 cursor-pointer hover:text-red-500"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (selectedRequest?.id === request.id) {
+                              setSelectedRequest(null)
+                            }
+
+                            setRequests(
+                              requests.filter((item) => item.id !== request.id)
+                            )
+                          }}
+                        />
                       </div>
                     </div>
                   ))}
@@ -453,8 +542,8 @@ function App() {
               </div>
             </ResizablePanel>
             <ResizableHandle />
-            <ResizablePanel defaultSize={80}>
-              {selectedRequest ? (
+            <ResizablePanel defaultSize={75}>
+              {selectedRequest && enabled ? (
                 <RequestEditor
                   selectedRequest={selectedRequest}
                   setSelectedRequest={setSelectedRequest}
@@ -465,7 +554,30 @@ function App() {
                 />
               ) : (
                 <div className="h-full flex items-center justify-center text-muted-foreground">
-                  请选择或创建一个请求
+                  {enabled ? (
+                    <div className="h-full flex flex-col gap-2 items-center justify-center">
+                      <div>{t('selectRequest')}</div>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setSelectedRequest({ ...DEFAULT_REQUEST })
+                        }}
+                      >
+                        {t('create')}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <div>{t('enableProxyTip')}</div>
+                      <Switch
+                        id="airplane-mode"
+                        checked={enabled}
+                        onCheckedChange={() => {
+                          setEnabled(!enabled)
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </ResizablePanel>
@@ -475,7 +587,7 @@ function App() {
         </div>
       </div>
 
-      <Toaster />
+      <Toaster position="top-right" />
     </div>
   )
 }

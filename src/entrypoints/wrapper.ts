@@ -1,5 +1,5 @@
 import queryString from 'query-string'
-import { RequestProxyConfig, RequestProxyRule } from './types'
+import { RequestProxyRule } from './types'
 
 const CONFIG = '__PROXY__XHR__CONFIG__'
 
@@ -23,7 +23,7 @@ export default defineUnlistedScript(async () => {
   // 发送准备就绪事件 -- content 接收到消息 将初始化数据传入
   await window.dispatchEvent(new CustomEvent('wrapper-ready'))
 
-  console.log('===== configs =====', configs)
+  // console.log('===== configs =====', configs)
 
   const urlIsMatched = (url: string, rule: string): boolean => {
     try {
@@ -116,6 +116,7 @@ export default defineUnlistedScript(async () => {
       const isXHR = this instanceof XMLHttpRequest
 
       for (const config of configs.list) {
+        if (!config.enabled) continue
         if (!urlIsMatched(url, config.rule)) continue
         // 修改这里：确保方法匹配是大写比较
         if (method.toUpperCase() !== config.method.toUpperCase()) continue
@@ -177,17 +178,20 @@ export default defineUnlistedScript(async () => {
     method: string = 'GET'
   ) {
     try {
-      for (const rule of configs.list) {
-        if (!urlIsMatched(url, rule.rule)) continue
+      for (const config of configs.list) {
+        if (!config.enabled) continue
+        if (!urlIsMatched(url, config.rule)) continue
         // 确保请求方法匹配
-        if (method.toUpperCase() !== rule.method) continue
+        if (method.toUpperCase() !== config.method) continue
 
-        // sendMessage2Content()
+        // 如果匹配的规则，则标记为已匹配
+        config.matched = true
+        updateConfigsByMessages()
 
-        if (rule.response && isJSONString(rule.response)) {
-          const responseData = JSON.parse(rule.response)
+        if (config.response && isJSONString(config.response)) {
+          const responseData = JSON.parse(config.response)
 
-          if (!rule.overwriteResponse) {
+          if (!config.overwriteResponse) {
             // 如果不是覆盖模式，尝试合并原始响应和新响应
             try {
               const originalResponse = JSON.parse(this.response || '{}')
@@ -223,13 +227,12 @@ export default defineUnlistedScript(async () => {
 
       // 添加 url 的 query 参数
       let newUrl = url
-      configs.list.some((config) => {
+      for (const config of configs.list) {
         if (urlIsMatched(url, config.rule)) {
           newUrl = requestQueryHandle(url, config)
-          return true // 返回 true 终止遍历
+          break
         }
-        return false
-      })
+      }
 
       // 先保存原始的 url 和 method，后续需要使用
       xhr[CONFIG] = { method, url: newUrl }
@@ -406,6 +409,10 @@ export default defineUnlistedScript(async () => {
       return response
     }
 
+    // 如果匹配的规则，则标记为已匹配
+    matchedRule.matched = true
+    updateConfigsByMessages()
+
     try {
       const responseData = JSON.parse(matchedRule.response)
       let finalResponse = responseData
@@ -447,13 +454,24 @@ export default defineUnlistedScript(async () => {
     }
   })
 
-  function sendMessage2Content() {
-    postMessage(
-      {
-        source: 'wrapper-to-content',
-        payload: configs,
-      },
-      '*'
-    )
+  function updateConfigsByMessages() {
+    // postMessage(
+    //   {
+    //     source: 'wrapper-to-content',
+    //     payload: configs,
+    //   },
+    //   '*'
+    // )
+
+    const iframe = document.getElementById('request-proxy-iframe')
+    if (iframe) {
+      ;(iframe as HTMLIFrameElement).contentWindow?.postMessage(
+        {
+          source: 'wrapper-to-iframe',
+          payload: configs,
+        },
+        '*'
+      )
+    }
   }
 })

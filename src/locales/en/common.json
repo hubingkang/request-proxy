@@ -1,9 +1,18 @@
 {
-  "home": "Home",
-  "settings": "Settings",
-  "themeSettings": "Theme Settings",
-  "i18nSettings": "Interface Language",
-  "introduce": "Introduce",
-  "description": "This is a boilerplate and starter for chrome browser extension, built with Wxt、 React、 Tailwind css 、Shadcn ui and Typescript.\nSupport dark mode and localization ",
-  "reference": "Reference"
+  "requestManagement": "Request Management",
+  "enableProxy": "Enable",
+  "enableProxyTip": "Please enable request proxy first",
+  "selectRequest": "Please select or create a request",
+  "create": "Create",
+  "request": "Request",
+  "response": "Response",
+  "requestName": "Request Name",
+  "requestNamePlaceholder": "Please enter request rule",
+  "requestRule": "Request Rule",
+  "requestRulePlaceholder": "Please enter request rule",
+  "overrideRequest": "Override Request",
+  "overrideResponse": "Override Response",
+  "save": "Save",
+  "pleaseEnterCorrectJsonFormat": "Please enter correct JSON format",
+  "pleaseEnterRequestRule": "Please enter request rule"
 }

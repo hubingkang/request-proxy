@@ -1,22 +1,28 @@
 import { storage } from '@wxt-dev/storage'
-import { sendMessage, onMessage } from 'webext-bridge/content-script'
+import { onMessage } from 'webext-bridge/content-script'
+import { RequestProxyRule } from './types'
 
 export default defineContentScript({
   matches: ['*://*/*'],
   runAt: 'document_start',
-  async main(ctx) {
+  async main() {
     const config = await storage.getItem<string>('local:request-proxy-config')
+    const parsedConfig = config ? JSON.parse(config) : null
+    // 重置 matched 为 false
+    parsedConfig.list = parsedConfig.list.map((item: RequestProxyRule) => ({
+      ...item,
+      matched: false,
+    }))
 
     // CustomEvent 会冒泡到 document 层级， Content Script 可以访问页面的 DOM 事件
     // 事件系统是共享的，所以可以跨环境通信，直接 window 赋值是没法访问的，window 是隔离开的
     window.addEventListener('wrapper-ready', async () => {
-      console.log('wrapper-ready', '执行了？？？')
       // wrapper 已准备就绪，发送初始化配置
       await window.postMessage(
         {
           source: 'content-to-wrapper-init-config',
           payload: config
-            ? JSON.parse(config)
+            ? parsedConfig
             : {
                 enabled: false,
                 list: [],
@@ -39,15 +45,25 @@ export default defineContentScript({
         if (existingIframe.style.opacity === '0') {
           existingIframe.style.opacity = '1'
           existingIframe.style.pointerEvents = 'auto' // 显示时启用鼠标事件
+          // 保存当前的 overflow 值到 data 属性
+          if (!existingIframe.dataset.originalOverflow) {
+            existingIframe.dataset.originalOverflow = getComputedStyle(
+              document.body
+            ).overflow
+          }
+          document.body.style.overflow = 'hidden'
         } else {
           existingIframe.style.opacity = '0'
           existingIframe.style.pointerEvents = 'none' // 隐藏时禁用鼠标事件，实现点击穿透
+          // 恢复原始的 overflow 值
+          document.body.style.overflow =
+            existingIframe.dataset.originalOverflow || 'auto'
         }
         return
       }
 
       const iframe = document.createElement('iframe')
-      iframe.src = browser.runtime.getURL('/options.html')
+      iframe.src = browser.runtime.getURL('/config-panel.html')
       iframe.id = 'request-proxy-iframe'
 
       iframe.style.opacity = '0'
@@ -58,6 +74,10 @@ export default defineContentScript({
       iframe.setAttribute('allow', 'clipboard-read; clipboard-write;')
 
       // iframe.style.transition = 'opacity 0.3s ease-in-out'
+
+      // 保存当前 body 的 overflow 值到 data 属性
+      iframe.dataset.originalOverflow = getComputedStyle(document.body).overflow
+      document.body.style.overflow = 'hidden'
 
       Object.assign(iframe.style, {
         position: 'fixed',
@@ -73,59 +93,49 @@ export default defineContentScript({
       })
 
       // 监听iframe加载完成事件
-      iframe.onload = async () => {
-        const config = await storage.getItem('local:request-proxy-config')
-        // console.log('iframe onload 初始化 config', config)
-        iframe.style.opacity = '1'
-        iframe.style.pointerEvents = 'auto' // iframe加载完成后启用鼠标事件
-
-        // 发送消息到iframe
-        iframe.contentWindow?.postMessage(
-          {
-            source: 'content-to-iframe',
-            payload: JSON.parse(config),
-          },
-          '*'
-        )
-      }
+      // iframe.onload = async () => {
+      //   iframe.style.opacity = '1'
+      //   iframe.style.pointerEvents = 'auto' // iframe加载完成后启用鼠标事件
+      // }
 
       document.body.appendChild(iframe)
     }
 
-    // createIframe()
+    if (parsedConfig?.enabled) {
+      createIframe()
+    }
 
-    onMessage('background-to-content', (message) => {
-      postMessage({
-        source: 'content-to-wrapper',
-        payload: '你好，我来自content-script',
-      })
+    onMessage('background-to-content', () => {
       createIframe()
     })
 
     window.addEventListener('message', async (e) => {
       const { source, payload } = e.data || {}
-      console.log('content ===> source', source)
-
       try {
         if (source === 'iframe-to-content') {
-          console.log('content 收到来自 iframe 的消息', payload)
+          console.log('payload', payload)
 
           // 缓存数据
           await storage.setItem<string>(
             'local:request-proxy-config',
             JSON.stringify(payload)
           )
+        } else if (source === 'iframe-to-content-request-init-data') {
+          const iframe = document.getElementById('request-proxy-iframe')
+          if (iframe) {
+            iframe.contentWindow?.postMessage(
+              {
+                source: 'content-to-iframe',
+                payload: parsedConfig,
+              },
+              '*'
+            )
+          }
         } else if (source === 'iframe-to-content-close') {
           createIframe()
-        } else if (source === 'wrapper-to-content-get-init-config') {
-          // console.log('content 收到来自 wrapper 的初始化配置', payload)
-          // postMessage({
-          //   source: 'content-to-wrapper',
-          //   payload: storage.getItem('local:request-proxy-config'),
-          // })
         }
       } catch (error) {
-        console.log(error)
+        // console.log(error)
       }
     })
   },

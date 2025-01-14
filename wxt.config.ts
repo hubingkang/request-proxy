@@ -9,7 +9,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   srcDir: 'src',
   manifest: {
-    permissions: ['activeTab', 'scripting', 'sidePanel', 'storage', 'tabs'],
+    permissions: ['activeTab', 'scripting', 'storage', 'tabs'],
     action: {},
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',
@@ -21,8 +21,7 @@ export default defineConfig({
           // 'assets/json.worker-DFDpljhp.js',
           'assets/*',
           'wrapper.js',
-          'wrapper1.js',
-          'options.html',
+          'config-panel.html',
         ],
         matches: ['<all_urls>'],
       },

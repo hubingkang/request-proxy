@@ -1,8 +1,8 @@
 {
   "extName": {
-    "message": "wxt-react-shadcn-tailwindcss-chrome-extension"
+    "message": "Request Proxy"
   },
   "extDescription": {
-    "message": "这是一个chrome 浏览器扩展的模板，使用 Wxt、React、Tailwind css 、 Shadcn ui、Typescript 构建。\n支持暗黑模式和本地化"
+    "message": "Request Proxy - 浏览器请求代理工具，用于拦截并修改网络请求和响应数据。"
   }
 }

@@ -9,7 +9,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   srcDir: 'src',
   manifest: {
-    permissions: ['activeTab', 'scripting', 'storage', 'tabs'],
+    permissions: ['activeTab', 'storage'],
     action: {},
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',

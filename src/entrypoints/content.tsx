@@ -7,9 +7,13 @@ export default defineContentScript({
   runAt: 'document_start',
   async main() {
     const config = await storage.getItem<string>('local:request-proxy-config')
-    const parsedConfig = config ? JSON.parse(config) : null
+    const language = await storage.getItem<string>(
+      'local:request-proxy-config-language'
+    )
+    const parsedConfig = config ? JSON.parse(config) : {}
+
     // 重置 matched 为 false
-    parsedConfig.list = parsedConfig.list.map((item: RequestProxyRule) => ({
+    parsedConfig.list = parsedConfig?.list?.map((item: RequestProxyRule) => ({
       ...item,
       matched: false,
     }))
@@ -38,7 +42,6 @@ export default defineContentScript({
 
     const createIframe = () => {
       const existingIframe = document.getElementById('request-proxy-iframe')
-
       // 如果iframe已存在
       if (existingIframe) {
         // 如果当前是隐藏状态，则显示
@@ -93,16 +96,12 @@ export default defineContentScript({
       })
 
       // 监听iframe加载完成事件
-      // iframe.onload = async () => {
-      //   iframe.style.opacity = '1'
-      //   iframe.style.pointerEvents = 'auto' // iframe加载完成后启用鼠标事件
-      // }
+      iframe.onload = async () => {
+        iframe.style.opacity = '1'
+        iframe.style.pointerEvents = 'auto' // iframe加载完成后启用鼠标事件
+      }
 
       document.body.appendChild(iframe)
-    }
-
-    if (parsedConfig?.enabled) {
-      createIframe()
     }
 
     onMessage('background-to-content', () => {
@@ -113,8 +112,6 @@ export default defineContentScript({
       const { source, payload } = e.data || {}
       try {
         if (source === 'iframe-to-content') {
-          console.log('payload', payload)
-
           // 缓存数据
           await storage.setItem<string>(
             'local:request-proxy-config',
@@ -126,13 +123,21 @@ export default defineContentScript({
             iframe.contentWindow?.postMessage(
               {
                 source: 'content-to-iframe',
-                payload: parsedConfig,
+                payload: {
+                  ...parsedConfig,
+                  language: language || 'en',
+                },
               },
               '*'
             )
           }
         } else if (source === 'iframe-to-content-close') {
           createIframe()
+        } else if (source === 'iframe-to-content-language') {
+          await storage.setItem<string>(
+            'local:request-proxy-config-language',
+            payload.language
+          )
         }
       } catch (error) {
         // console.log(error)

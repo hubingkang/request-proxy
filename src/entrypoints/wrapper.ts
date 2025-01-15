@@ -1,5 +1,5 @@
 import queryString from 'query-string'
-import { RequestProxyRule } from './types'
+import { RequestProxyConfig, RequestProxyRule } from './types'
 
 const CONFIG = '__PROXY__XHR__CONFIG__'
 
@@ -97,7 +97,7 @@ export default defineUnlistedScript(async () => {
         return params ? `${baseUrl}?${params}` : baseUrl
       }
     } catch (error) {
-      console.error('Query handling error:', error)
+      // console.error('Query handling error:', error)
       return url
     }
   }
@@ -159,14 +159,14 @@ export default defineUnlistedScript(async () => {
               newBody = config.body
             }
           } catch (e) {
-            console.error('Body handling error:', e)
+            // console.error('Body handling error:', e)
             newBody = body
           }
         }
       }
       return [newUrl, newBody]
     } catch (error) {
-      console.error('Request handler error:', error)
+      // console.error('Request handler error:', error)
       return [url, body]
     }
   }
@@ -197,7 +197,7 @@ export default defineUnlistedScript(async () => {
               const originalResponse = JSON.parse(this.response || '{}')
               return { ...originalResponse, ...responseData }
             } catch (e) {
-              console.warn('无法解析原始响应，将直接使用新响应')
+              // console.warn('无法解析原始响应，将直接使用新响应')
               return responseData
             }
           }
@@ -207,7 +207,7 @@ export default defineUnlistedScript(async () => {
         return undefined
       }
     } catch (error) {
-      console.error('Response handler error:', error)
+      // console.error('Response handler error:', error)
       return undefined
     }
   }
@@ -239,6 +239,9 @@ export default defineUnlistedScript(async () => {
 
       // 设置响应拦截器，用于修改返回数据
       const handleReadyStateChange = () => {
+        // // 添加全局开关检查
+        // if (!configs.enabled) return
+
         if (xhr.readyState === 4) {
           const responseJson = responseHandler.call(xhr, newUrl, method)
           // 如果待修改的 responseJson 有值，则代理响应结果
@@ -329,7 +332,7 @@ export default defineUnlistedScript(async () => {
         // 4. 处理响应拦截
         return interceptResponse(response, request.url, request.method)
       } catch (error) {
-        console.error('Fetch 拦截器错误:', error)
+        // console.error('Fetch 拦截器错误:', error)
         return originalFetch.apply(window, args)
       }
     }
@@ -363,7 +366,7 @@ export default defineUnlistedScript(async () => {
           body = await clonedRequest.text()
         }
       } catch (e) {
-        console.warn('读取请求体失败:', e)
+        // console.warn('读取请求体失败:', e)
       }
     }
 
@@ -399,6 +402,9 @@ export default defineUnlistedScript(async () => {
     url: string,
     method: string
   ): Promise<Response> {
+    // 添加全局开关检查
+    if (!configs.enabled) return response
+
     const matchedRule = configs.list.find(
       (config) =>
         urlIsMatched(url, config.rule) &&
@@ -430,7 +436,7 @@ export default defineUnlistedScript(async () => {
         headers: response.headers,
       })
     } catch (e) {
-      console.warn('处理响应失败:', e)
+      // console.warn('处理响应失败:', e)
       return response
     }
   }
@@ -443,8 +449,8 @@ export default defineUnlistedScript(async () => {
         configs = payload
       } else if (source === 'content-to-wrapper-init-config') {
         configs = {
-          enabled: payload.enabled || true,
-          list: payload.list.filter(
+          enabled: payload?.enabled || false,
+          list: payload?.list.filter(
             (item: RequestProxyRule) => item.enabled && item.rule
           ),
         }

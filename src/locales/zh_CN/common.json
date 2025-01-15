@@ -7,12 +7,11 @@
   "request": "请求",
   "response": "响应",
   "requestName": "请求名称",
-  "requestNamePlaceholder": "请输入请求规则",
+  "requestNamePlaceholder": "请输入请求名称",
   "requestRule": "请求规则",
   "requestRulePlaceholder": "请输入请求规则",
   "overrideRequest": "覆盖请求",
   "overrideResponse": "覆盖响应",
   "save": "保存",
-  "pleaseEnterCorrectJsonFormat": "请输入正确的JSON格式",
-  "pleaseEnterRequestRule": "请输入请求规则"
+  "pleaseEnterCorrectJsonFormat": "请输入正确的JSON格式"
 }

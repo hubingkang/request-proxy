@@ -8,7 +8,7 @@ import initTranslations from '@/components/i18n.js'
 initTranslations(i18nConfig.defaultLocale, ['common'])
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  // <React.StrictMode>
-  <App />
-  // </React.StrictMode>
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
 )

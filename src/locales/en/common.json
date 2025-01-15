@@ -7,7 +7,7 @@
   "request": "Request",
   "response": "Response",
   "requestName": "Request Name",
-  "requestNamePlaceholder": "Please enter request rule",
+  "requestNamePlaceholder": "Please enter request name",
   "requestRule": "Request Rule",
   "requestRulePlaceholder": "Please enter request rule",
   "overrideRequest": "Override Request",

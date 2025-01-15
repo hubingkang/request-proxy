@@ -1,8 +1,8 @@
 {
   "extName": {
-    "message": "wxt-react-shadcn-tailwindcss-chrome-extension"
+    "message": "Request Proxy"
   },
   "extDescription": {
-    "message": "This is a boilerplate and starter for chrome browser extension, built with Wxt、 React、 Tailwind css 、Shadcn ui and Typescript.\nSupport dark mode and localization "
+    "message": "Request Proxy - Browser request proxy tool for intercepting and modifying network requests and responses."
   }
 }

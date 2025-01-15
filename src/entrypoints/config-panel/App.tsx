@@ -315,7 +315,6 @@ function App() {
       if (source === 'content-to-iframe') {
         setRequests(payload.list || [])
         setEnabled(payload.enabled)
-        setSelectedRequest(payload.list[0] || null)
         setLanguage(payload.language || 'en')
         i18n.changeLanguage(payload.language || 'en')
       } else if (source === 'wrapper-to-iframe') {
@@ -361,6 +360,15 @@ function App() {
 
   useUpdateEffect(() => {
     i18n.changeLanguage(language)
+    window.parent.postMessage(
+      {
+        source: 'iframe-to-content-language',
+        payload: {
+          language,
+        },
+      },
+      '*'
+    )
   }, [language])
 
   // async function sendMessageToBackground() {
@@ -402,8 +410,6 @@ function App() {
       '*'
     )
   }
-
-  console.log('enabled', enabled)
 
   return (
     <div className="w-screen h-screen p-8 text-base">

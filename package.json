@@ -2,7 +2,7 @@
   "name": "request-proxy",
   "description": "A browser extension for modifying requests, supporting modifications to the query, body, and return values of xhr and fetch.",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "scripts": {
     "dev": "wxt",

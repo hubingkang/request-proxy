@@ -2,7 +2,7 @@ import { defineConfig } from 'wxt'
 import react from '@vitejs/plugin-react'
 // import replace from '@rollup/plugin-replace'
 // import copy from 'rollup-plugin-copy'
-// import replace from '@rollup/plugin-replace'
+import replace from '@rollup/plugin-replace'
 // import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 
 // See https://wxt.dev/api/config.html
@@ -56,13 +56,9 @@ export default defineConfig({
       //   customDistPath: chrome.runtime.getURL('./'),
       // }),
 
-      // replace({
-      //   preventAssignment: true,
-      //   values: {
-      //     // '/assets/': './assets/',
-      //     // assets/editor.worker-mLNEVLJU.js
-      //   },
-      // }),
+      replace({
+        'https://cdn.jsdelivr.net/npm/monaco-editor@0.43.0/min/vs': '',
+      }),
 
       // ...(process.env.NODE_ENV === 'production'
       //   ? [
